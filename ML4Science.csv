@@ -1,0 +1,14 @@
+Dataset,Link to dataset,Task,Number of images,Storage (in Gb/Go),File extension,Resolution,Microns-per-pixel (MPP),TCGA-based?,Patch/WSI-level task?,Size of patch (if applicable),Previous model(s),Organ(s),
+BACH,https://iciar2018-challenge.grand-challenge.org,"Subtyping - normal, benign, in situ carcinoma and invasive carcinoma",400,7,tif - no headers ,20x,0.42,No,Region/RoI,"2,048 x 1,536 px at 0.42 mpp",UNI;,Breast,
+BRACS,https://academic.oup.com/database/article/doi/10.1093/database/baac093/6762252,Subtyping,"4,539",52,png,40x,0.25,No,WSI,variable,UNI;,Breast,
+MIDOG,https://imig.science/midog2021/download-dataset/,Patch-level mitosis prediction (256 x 256 px),150,25,tiff - no headers,40x,"check json file? If not, then assume 0.25",No,Region/RoI,8000 x 8000,CTransPath; ,Breast,
+PanopTILs,https://sites.google.com/view/panoptils,"Tissue segmentation labels for classes:  Exclude, Cancerous epithelium, Stroma, TILs, Normal epithelium, Junk/Debris, Blood, Other, Whitespace/Empty, Nuclei segementation labels: Cancer nucleus, Stromal nucleus, Large stromal nucleus, Lymphocyte nucleus, Plasma cell / large TIL nucleus, Normal epithelial nucleus, Other nucleus, Unknown/Ambiguous nucleus, Background (non-nuclear material)",1317,14,png,40x,0.25,,,,,,
+BreakHis,,,"9,109",4.3,,40x,,,,,,,
+CPTAC-BRCA,,,642,,,,,,,,,,
+BCNB,https://bcnb.grand-challenge.org,,"1,058",35,jpg (WSIs),,,,,,,,
+,,,,102.3,,,,,,,,,
+"If time permits (Colon, mixed)",,,,,,,,,,,,,
+CRC-100k,https://zenodo.org/records/1214456,Tissue classification,"107,180",24.2,tif - no headers,20x,,No,,Patch,224 x 224 px at 0.5 µm,Virchow; RudolfV; UNI; CTransPath,Colon
+TCGA-TIL,https://zenodo.org/records/6604094,TIL positive vs negative,"304,097",,,20x,,Yes,,Patch, 100x100 px at 0.5 µm,RudolfV; UNI; ,Multiple
+HunCRC (download ongoing),,,,,,,,,,,,,
+PCam,https://github.com/basveeling/pcam,Cancer vs benign (Presence/absence of metastasis),"327,680",8,h5.gz,,,No,,Patch,96 x 96 px at 10x,Virchow; RudolfV; ,Lymph nodes
