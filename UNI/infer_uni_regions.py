@@ -2,18 +2,12 @@ import os
 import torch
 import timm
 from torchvision import transforms
-import cv2
 import numpy as np
 import json
-from typing import List, Dict, Tuple
+from typing import Dict
 from openslide import open_slide
 from torch.utils.data import DataLoader, Dataset
-import pandas as pd
 import argparse
-import glob
-from tqdm import tqdm
-import cProfile
-from pstats import Stats
 
 
 class TileDataset(Dataset):
@@ -24,12 +18,10 @@ class TileDataset(Dataset):
         coordinates = metadata["tiles"]
         downsample = target_mpp / base_mpp
 
-        self.slide = open_slide(slide_path)
-        lvl_f = self.slide.level_downsamples
-        self.l = self.slide.get_best_level_for_downsample(downsample)
-        self.patch_size_src = round(
-            patch_size * (target_mpp * lvl_f[self.l] / metadata["base_mpp"])
-        )
+        self.base_mpp = base_mpp
+        self.target_mpp = target_mpp
+        self.patch_size = patch_size
+        self.downsample = downsample
         self.coordinates = coordinates
         self.transform = transform
 
@@ -37,10 +29,17 @@ class TileDataset(Dataset):
         return len(self.coordinates)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
+        slide = open_slide(slide_path) # Must be initialized in each worker
+        level = slide.get_best_level_for_downsample(self.downsample)
+        lvl_f = slide.level_downsamples
+        patch_size_src = round(
+            self.patch_size * (self.target_mpp * lvl_f[level] / self.base_mpp)
+        )
+
         x,y = self.coordinates[idx]
         tile = np.array(
-            self.slide.read_region(
-                location=(x, y), size=(self.patch_size_src, self.patch_size_src), level=self.l
+            slide.read_region(
+                location=(x, y), size=(patch_size_src, patch_size_src), level=level
             ).convert("RGB")
         )
         return self.transform(tile)
@@ -195,9 +194,15 @@ if __name__ == "__main__":
     sample = metadata_path.split("/")[-1].split(".json")[0]
     print("sample: ", sample)
 
-    slide_path = metadata_path.replace(
-        f"tiles_metadata_{patch_size}", "images"
-    ).replace(".json", ".tiff")
+    if data_dir.split("/")[-1] == "TCGA":
+        slide_path = metadata_path.replace(
+            f"tiles_metadata_{patch_size}", "images"
+        ).replace(".json", ".tiff")
+
+    else: 
+        slide_path = metadata_path.replace(
+            f"tiles_metadata_{patch_size}", "images"
+        ).replace(".json", "")
 
     print("slide path: ", slide_path)
 
