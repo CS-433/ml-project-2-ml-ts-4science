@@ -12,6 +12,9 @@ from collections import defaultdict
 from datetime import datetime
 import time
 
+
+valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS"]
+
 def add_subfolder(base_dir: str, subfolder_name: str) -> None:
     subdirs = [f.path for f in os.scandir(base_dir) if f.is_dir()]
     for subdir in subdirs:
@@ -21,7 +24,7 @@ def add_subfolder(base_dir: str, subfolder_name: str) -> None:
 
 def save_metadata_to_file(
     data_dir: str,
-    dataset: Literal["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG"],
+    dataset: Literal[tuple(valid_datasets)],
     project_id: str,
     slide_id: str,
     tiles: List[Tuple[int]],
@@ -38,10 +41,11 @@ def save_metadata_to_file(
     bmp: float,
     oversample: bool,
     mult: float,
+    remove_white_areas_bool: bool = False,
 ) -> None:
     if dataset == "TCGA":
         json_file = f"{data_dir}/{project_id}/tiles_metadata_{patch_size}/{slide_id}.json"
-    elif dataset in ["GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG"]:
+    elif dataset in valid_datasets:
         json_file = f"{data_dir}/tiles_metadata_{patch_size}/{slide_id}.json"
     else:
         raise ValueError(f"Unknown dataset {dataset}!")
@@ -65,6 +69,7 @@ def save_metadata_to_file(
                 "oversample": oversample,
                 "mult": mult,
                 "tiles": tiles,
+                "remove_white_areas_bool": remove_white_areas_bool,
             },
             f,
             indent=4,
@@ -72,33 +77,34 @@ def save_metadata_to_file(
 
 
 if __name__ == "__main__":
-    samples_id = {"TCGA": "TCGA-22-1017-01Z-00-DX1.9562FE79-A261-42D3-B394-F3E0E2FF7DDA",
-                  "GTEx": "GTEX-1269W-0126",
-                  "MHIST": "MHIST_aaa.png",
-                  "CRC100k": "LYM-CLHGDLYK.tif",
-                  "PANDA": "8352937c62fad694f28fdeef9fc8c464.tiff",
-                  "BACH": "n020.tif", 
-                  "BRACS_RoI": "BRACS_1499_UDH_2.png",
-                  "MIDOG": "001.tiff"}
+    # samples_id = {"TCGA": "TCGA-22-1017-01Z-00-DX1.9562FE79-A261-42D3-B394-F3E0E2FF7DDA",
+    #               "GTEx": "GTEX-1269W-0126",
+    #               "MHIST": "MHIST_aaa.png",
+    #               "CRC100k": "LYM-CLHGDLYK.tif",
+    #               "PANDA": "8352937c62fad694f28fdeef9fc8c464.tiff",
+    #               "BACH": "n020.tif", 
+    #               "BRACS": "BRACS_1499_UDH_2.png",
+    #               "MIDOG": "001.tiff"}}
     slide_or_image = {"TCGA": "slides", 
                       "GTEx": "slides", 
                       "MHIST": "images",
                       "CRC100k": "images",
                       "PANDA": "images", 
-                      "BACH" : "images", 
-                      "BRACS_RoI": "images",
+                      "BACH" : "images",
+                      "BRACS": "images",
                       "MIDOG": "images"
                       }
     ####### Configs ############################################
-    dataset: Literal["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG"] = "BRACS_RoI"
-    sample_id = samples_id[dataset]
+    dataset: Literal[tuple(valid_datasets)] = "MIDOG"
     input_prefix = slide_or_image[dataset]
 
     # data_dir = f"/store/swissai/a02/health_pathology/data/{dataset}" # for todi
-    data_dir = f"/capstor/scratch/cscs/vsubrama/data/{dataset}/" # for bristen
-    slide_metadata_path = f"{data_dir}/{input_prefix}_metadata." 
-    slide_metadata_path += "tsv" if dataset == "TCGA" else "csv"
-    mode: Literal["generate_metadata", "debug"] = "debug"
+    # data_dir = f"/capstor/scratch/cscs/vsubrama/data/{dataset}/" # for bristen
+    data_dir = f"/home/carlos/ml-project-2-ml-ts-4science/dev_data/{dataset}"
+    slide_metadata_path = f"{data_dir}/{input_prefix}_metadata."
+    file_extension = "tsv" if dataset == "TCGA" else "csv"
+    slide_metadata_path = f"{data_dir}/{input_prefix}_metadata.{file_extension}"
+    mode: Literal["generate_metadata", "debug"] = "generate_metadata"
     patch_size = 224
     mpp = 0.5
     min_cc_size = 10
@@ -116,9 +122,8 @@ if __name__ == "__main__":
                   "MHIST": "Image Name", 
                   "CRC100k": "Image Name",
                   "PANDA": "Image_Name",
-                  "BACH" : "Image_Name", 
+                  "BACH" : "Image Name", 
                   "BRACS" : "Image Name",
-                  "BRACS_RoI" : "Image Name", 
                   "MIDOG" : "Image Name"
                   }
     id_column = id_columns[dataset] 
@@ -168,7 +173,7 @@ if __name__ == "__main__":
                     pbar.set_postfix_str(slide_id)
                     pbar.update(1)
                     project_id = row["Project ID"].split("TCGA-")[-1] if dataset == "TCGA" else row["Subject ID"] if dataset == "GTEx" else row["Image_Name"]
-                    if not os.path.exists(row[f"metadata_path_{patch_size}"]) and os.path.exists(row[f"slide_path"]):
+                    if not os.path.exists(row[f"metadata_path_{patch_size}"]) and os.path.exists(row["slide_path"]):
                         #start_time = time.time()
                         try:
                             slide = openslide.OpenSlide(row["slide_path"])
@@ -230,76 +235,76 @@ if __name__ == "__main__":
                         # print("Elapsed time: ", elapsed_time)
         else: # debugging!! ,
             remove_white_areas_bool=False #This should be turned to TRUE if the images are actually WSIs but without header information 
-
+            os.makedirs(f"{data_dir}/tiles_metadata_{patch_size}", exist_ok=True)
             with tqdm(total=len(df)) as pbar:
                 print(df_slurm)
                 for idx, row in df_slurm.iterrows():
                     slide_id = row[id_column].split(".")[0] if dataset == "TCGA" else row[id_column]
                     pbar.set_postfix_str(slide_id)
                     pbar.update(1)
-                    project_id = row["Project ID"].split("TCGA-")[-1] if dataset == "TCGA" else row["Subject ID"] if dataset == "GTEx" else row["Image_Name"]
-                    if not os.path.exists(row[f"metadata_path_{patch_size}"]) and os.path.exists(row[f"slide_path"]):
-                        #start_time = time.time()
-                        try:
-                            image = np.array(Image.open(row["slide_path"]))
-                        except openslide.lowlevel.OpenSlideUnsupportedFormatError:
-                            print(f"{row['slide_path']}: Unsupported or missing image file")
-                            excluded_or_missing.append(slide_id)
-                            df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
-                            num_tiles.append(0)
-                            continue
-                            #raise openslide.lowlevel.OpenSlideUnsupportedFormatError
-                        image_base_mpp = extract_tissue_from_images.image_base_mpp(dataset)
-                        if image_base_mpp is not None:
-                            try:
-                                grid = extract_tissue_from_images.make_sample_grid(
-                                    image,
-                                    patch_size,
-                                    mpp=mpp,
-                                    min_cc_size=min_cc_size,
-                                    max_ratio_size=max_ratio_size,
-                                    dilate=dilate,
-                                    erode=erode,
-                                    prune=prune,
-                                    overlap=overlap,
-                                    maxn=maxn,
-                                    bmp=bmp,
-                                    oversample=oversample,
-                                    mult=mult,
-                                    base_mpp=image_base_mpp,
-                                    remove_white_areas_bool=remove_white_areas_bool
-                                )
-                            except NotImplementedError:
-                                print("Skipping image: ", image)
-                        else:
-                            grid = []
-                            df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                    project_id = row["Project ID"].split("TCGA-")[-1] if dataset == "TCGA" else row["Subject ID"] if dataset == "GTEx" else row[id_column]
 
-                        save_metadata_to_file(
-                            data_dir=data_dir,
-                            dataset=dataset,
-                            project_id=project_id,
-                            slide_id=slide_id,
-                            tiles=[tuple(map(int, tile)) for tile in grid],
-                            patch_size=patch_size,
-                            mpp=mpp,
-                            min_cc_size=min_cc_size,
-                            max_ratio_size=max_ratio_size,
-                            dilate=dilate,
-                            erode=erode,
-                            prune=prune,
-                            overlap=overlap,
-                            maxn=maxn,
-                            bmp=bmp,
-                            oversample=oversample,
-                            mult=mult,
-                            base_mpp=image_base_mpp,
-                            remove_white_areas_bool=remove_white_areas_bool
-                        )
-                        num_tiles.append(len(grid))
-                        # end_time = time.time()
-                        # elapsed_time = end_time - start_time
-                        # print("Elapsed time: ", elapsed_time)
+                    #start_time = time.time()
+                    try:
+                        image = np.array(Image.open(row["slide_path"]))
+                    except openslide.lowlevel.OpenSlideUnsupportedFormatError:
+                        print(f"{row['slide_path']}: Unsupported or missing image file")
+                        excluded_or_missing.append(slide_id)
+                        df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                        num_tiles.append(0)
+                        continue
+                        #raise openslide.lowlevel.OpenSlideUnsupportedFormatError
+                    image_base_mpp = extract_tissue_from_images.image_base_mpp(dataset)
+                    if image_base_mpp is not None:
+                        try:
+                            grid = extract_tissue_from_images.make_sample_grid(
+                                image,
+                                patch_size=patch_size,
+                                mpp=mpp,
+                                min_cc_size=min_cc_size,
+                                max_ratio_size=max_ratio_size,
+                                dilate=dilate,
+                                erode=erode,
+                                prune=prune,
+                                overlap=overlap,
+                                maxn=maxn,
+                                bmp=bmp,
+                                oversample=oversample,
+                                mult=mult,
+                                base_mpp=image_base_mpp,
+                                remove_white_areas_bool=remove_white_areas_bool
+                            )
+                        except NotImplementedError:
+                            print("Skipping image: ", image)
+                    else:
+                        grid = []
+                        df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+
+                    save_metadata_to_file(
+                        data_dir=data_dir,
+                        dataset=dataset,
+                        project_id=project_id,
+                        slide_id=slide_id,
+                        tiles=[tuple(map(int, tile)) for tile in grid],
+                        patch_size=patch_size,
+                        mpp=mpp,
+                        min_cc_size=min_cc_size,
+                        max_ratio_size=max_ratio_size,
+                        dilate=dilate,
+                        erode=erode,
+                        prune=prune,
+                        overlap=overlap,
+                        maxn=maxn,
+                        bmp=bmp,
+                        oversample=oversample,
+                        mult=mult,
+                        base_mpp=image_base_mpp,
+                        remove_white_areas_bool=remove_white_areas_bool
+                    )
+                    num_tiles.append(len(grid))
+                    # end_time = time.time()
+                    # elapsed_time = end_time - start_time
+                    # print("Elapsed time: ", elapsed_time)
     
             print(len(df_slurm))
             print(len(num_tiles))

@@ -13,7 +13,7 @@ MAX_PIXEL_DIFFERENCE = 0.2 # difference must be within 20% of image size
 
 base_mpps_dict = {"BACH": 0.42,
                   "BRACS": 0.25, #in microns per pixel (MPP)
-                  "BRACS_RoI": 0.25 #in microns per pixel (MPP)
+                  "MIDOG": 0.25, #TODO: check this value for the images from the scanners. We know which scanner was used for each image
                  }
 
 def image_base_mpp(dataset):
@@ -183,7 +183,7 @@ def addoverlap(w, grid, overlap, patch_size, mpp, maxmpp, img, offset=0):
         if connu[i]: extra.extend(zip(x+ox.flatten()-offset,y-oy.flatten()-offset))
     return extra
 
-def make_sample_grid(image, remove_white_areas_bool=False, patch_size=224, mpp=0.5, min_cc_size=10, max_ratio_size=10, dilate=False, erode=False, prune=False, overlap=1, maxn=None, bmp=None, oversample=False, mult=1, centerpixel=False, base_mpp=None):
+def make_sample_grid(image, patch_size=224, mpp=0.5, min_cc_size=10, max_ratio_size=10, dilate=False, erode=False, prune=False, overlap=1, maxn=None, bmp=None, oversample=False, mult=1, centerpixel=False, base_mpp=None, remove_white_areas_bool=False):
     '''
     Script that given an openslide object return a list of tuples
     in the form of (x,y) coordinates for patch extraction of sample patches.
@@ -196,7 +196,7 @@ def make_sample_grid(image, remove_white_areas_bool=False, patch_size=224, mpp=0
     if base_mpp is None:
         base_mpp = isyntax_mpp
     
-    if remove_white_areas_bool == True:
+    if remove_white_areas_bool:
         if oversample:
             img, th = threshold(image, patch_size, base_mpp, base_mpp, mult)
         else:
