@@ -11,6 +11,7 @@ from tqdm import tqdm
 from collections import defaultdict
 from datetime import datetime
 import time
+import yaml
 
 
 valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS"]
@@ -76,7 +77,13 @@ def save_metadata_to_file(
         )
 
 
-if __name__ == "__main__":
+def main():
+    with open("config.yaml", "r") as file:
+        config = yaml.safe_load(file)
+
+    slide_or_image = {k: v["type"] for k, v in config["datasets"].items()}
+    id_columns = {k: v["id_column"] for k, v in config["datasets"].items()}
+
     # samples_id = {"TCGA": "TCGA-22-1017-01Z-00-DX1.9562FE79-A261-42D3-B394-F3E0E2FF7DDA",
     #               "GTEx": "GTEX-1269W-0126",
     #               "MHIST": "MHIST_aaa.png",
@@ -85,15 +92,7 @@ if __name__ == "__main__":
     #               "BACH": "n020.tif", 
     #               "BRACS": "BRACS_1499_UDH_2.png",
     #               "MIDOG": "001.tiff"}}
-    slide_or_image = {"TCGA": "slides", 
-                      "GTEx": "slides", 
-                      "MHIST": "images",
-                      "CRC100k": "images",
-                      "PANDA": "images", 
-                      "BACH" : "images",
-                      "BRACS": "images",
-                      "MIDOG": "images"
-                      }
+    
     ####### Configs ############################################
     dataset: Literal[tuple(valid_datasets)] = "MIDOG"
     input_prefix = slide_or_image[dataset]
@@ -117,15 +116,6 @@ if __name__ == "__main__":
     mult = 1
     maxn = None
     bmp = None
-    id_columns = {"TCGA": "File Name",
-                  "GTEx": "Tissue Sample ID", 
-                  "MHIST": "Image Name", 
-                  "CRC100k": "Image Name",
-                  "PANDA": "Image_Name",
-                  "BACH" : "Image Name", 
-                  "BRACS" : "Image Name",
-                  "MIDOG" : "Image Name"
-                  }
     id_column = id_columns[dataset] 
     ############################################################
     excluded_or_missing = []
@@ -370,3 +360,5 @@ if __name__ == "__main__":
     #                 save=f'{sample_id}_tiling_overview.png',
     #             )
 
+if __name__ == "__main__":
+    main()

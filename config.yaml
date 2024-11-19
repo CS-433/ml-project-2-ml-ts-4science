@@ -1,0 +1,25 @@
+datasets:
+  TCGA:
+    type: slides
+    id_column: File Name
+  GTEx:
+    type: slides
+    id_column: Tissue Sample ID
+  MHIST:
+    type: images
+    id_column: Image Name
+  CRC100k:
+    type: images
+    id_column: Image Name
+  PANDA:
+    type: images
+    id_column: Image_Name
+  BACH:
+    type: images
+    id_column: Image Name
+  BRACS:
+    type: images
+    id_column: Image Name
+  MIDOG:
+    type: images
+    id_column: Image Name
