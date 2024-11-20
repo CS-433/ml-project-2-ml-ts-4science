@@ -1,3 +1,7 @@
+dataset: MIDOG
+data_dir: /home/carlos/ml-project-2-ml-ts-4science/data
+mpp: 2
+
 datasets:
   TCGA:
     type: slides

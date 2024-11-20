@@ -94,18 +94,18 @@ def main():
     #               "MIDOG": "001.tiff"}}
     
     ####### Configs ############################################
-    dataset: Literal[tuple(valid_datasets)] = "MIDOG"
+    dataset: Literal[tuple(valid_datasets)] = config["dataset"]
     input_prefix = slide_or_image[dataset]
 
     # data_dir = f"/store/swissai/a02/health_pathology/data/{dataset}" # for todi
     # data_dir = f"/capstor/scratch/cscs/vsubrama/data/{dataset}/" # for bristen
-    data_dir = f"/home/carlos/ml-project-2-ml-ts-4science/dev_data/{dataset}"
+    data_dir = os.path.join(config["data_dir"], dataset)
     slide_metadata_path = f"{data_dir}/{input_prefix}_metadata."
     file_extension = "tsv" if dataset == "TCGA" else "csv"
     slide_metadata_path = f"{data_dir}/{input_prefix}_metadata.{file_extension}"
     mode: Literal["generate_metadata", "debug"] = "generate_metadata"
     patch_size = 224
-    mpp = 0.5
+    mpp = config["mpp"]
     min_cc_size = 10
     max_ratio_size = 10
     overlap = 1
@@ -264,8 +264,8 @@ def main():
                                 base_mpp=image_base_mpp,
                                 remove_white_areas_bool=remove_white_areas_bool
                             )
-                        except NotImplementedError:
-                            print("Skipping image: ", image)
+                        except (NotImplementedError, ZeroDivisionError):
+                            print("Skipping image: ", row["Image Name"])
                     else:
                         grid = []
                         df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)

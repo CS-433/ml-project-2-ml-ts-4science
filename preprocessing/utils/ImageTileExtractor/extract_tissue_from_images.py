@@ -221,6 +221,9 @@ def make_sample_grid(image, patch_size=224, mpp=0.5, min_cc_size=10, max_ratio_s
     else:
         w = int(np.round(image.shape[0]*1./(patch_size*mpp/base_mpp))) * mult
         h = int(np.round(image.shape[1]*1./(patch_size*mpp/base_mpp))) * mult
+        
+        if w == 0 or h == 0:
+            raise ZeroDivisionError(f"Image size is too small for patch size {patch_size} and mpp {mpp}")
         img = image[::int(np.ceil(image.shape[0]/w)), ::int(np.ceil(image.shape[1]/h)), :] #.get_thumbnail((w,h))
         img = np.ones((img.shape[0], img.shape[1]))
 

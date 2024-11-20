@@ -1,13 +1,20 @@
 
 ### Preprocessing
 
+40x: source
+20x: 0.42 or 0.5 mpp?
+10x: 1 mpp
+5x: 2 mpp
+
 #### BACH
 https://iciar2018-challenge.grand-challenge.org/Dataset/
 - Microscopy images, NOT WSIs. Whole-slide images are high resolution images containing the entire sampled tissue. In this sense, microscopy images are just details of the whole-slide images.
+- 20x, 0.42 mpp
 
 #### BRACS
 https://www.bracs.icar.cnr.it/details/
 - The Regions of Interest are provided in .png file format. The filename of a RoI includes the filename of the corresponding WSI as well as the subtype of RoI (e.g. BRACS_010_PB_32.png is the RoI number 32, extracted from the WSI named BRACS_010.svs and labeled as Pathological Benign). The resolution of each RoI is 40× and its dimension can easily exceed 4,000 by 4,000 pixels.
+- 40x, 0.25 mpp
 
 #### MIDOG
 https://imig.science/midog2021/download-dataset/
@@ -17,5 +24,7 @@ https://imig.science/midog2021/download-dataset/
     051.tiff to 100.tiff: Hamamatsu S360 (with 0.5 numerical aperture)
     101.tiff to 150.tiff: Aperio ScanScope CS2
     151.tiff to 200.tiff: Leica GT450 (only images, no annotations provided for this scanner)
+- 0-100 0.23 mpp, 101-200 0.25 mpp
+- Should we crop based on the MIDOG.json file?
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/UDdkOEMs)
