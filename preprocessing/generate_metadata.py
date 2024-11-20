@@ -1,13 +1,16 @@
 from glob import glob
 import pandas as pd
 import os
-
+import yaml
 
 
 if __name__ == "__main__":
-    dataset = "MIDOG"
+    with open("config.yaml", "r") as file:
+        config = yaml.safe_load(file)
+    
+    dataset = config["dataset"]
 
-    images_dir = f"/home/carlos/ml-project-2-ml-ts-4science/dev_data/{dataset}/images/"
+    images_dir = os.path.join(config["data_dir"], dataset, "images")
     list_of_images = sorted(glob(f"{images_dir}/*"))
     print(len(list_of_images))
 
@@ -19,4 +22,5 @@ if __name__ == "__main__":
                             })
     print(data_df)
 
-    data_df.to_csv(f"/home/carlos/ml-project-2-ml-ts-4science/dev_data/{dataset}/images_metadata.csv")
+    save_dir = os.path.join(config["data_dir"], dataset, "images_metadata.csv")
+    data_df.to_csv(save_dir)
