@@ -16,6 +16,7 @@ class TileDataset(Dataset):
         target_mpp = metadata["mpp"]
         patch_size = metadata["patch_size"]
         coordinates = metadata["tiles"]
+        self.slide = open_slide(slide_path)
         downsample = target_mpp / base_mpp
 
         self.base_mpp = base_mpp
@@ -29,7 +30,7 @@ class TileDataset(Dataset):
         return len(self.coordinates)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
-        slide = open_slide(slide_path)  # Must be initialized in each worker
+        slide = self.slide  
         level = slide.get_best_level_for_downsample(self.downsample)
         lvl_f = slide.level_downsamples
         patch_size_src = round(
@@ -145,7 +146,7 @@ if __name__ == "__main__":
         "--model_path",
         type=str,
         required=False,
-        default="/capstor/scratch/cscs/vsubrama/ckpts/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin",
+        default="/scratch/izar/carlos/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin",
         help="path for saved chkpt",
     )
 
