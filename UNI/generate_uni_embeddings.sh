@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=generate_uni_embeddings_panda    
-#SBATCH --output=/capstor/scratch/cscs/vsubrama/slurm/logs/%x/GTEx/%j_%a.log 
+#SBATCH --job-name=generate_uni_embeddings_panda
+#SBATCH --output=/capstor/scratch/cscs/vsubrama/slurm/logs/%x/GTEx/%j_%a.log
 # #SBATCH --reservation=bristen
 #SBATCH --cpus-per-task=32
 #SBATCH --array=0-15
 #SBATCH --nodes=1
-#SBATCH --time=4:00:00          
+#SBATCH --time=4:00:00
 #SBATCH --environment=/capstor/scratch/cscs/vsubrama/edf/uni_torch_env_todi.toml
 #SBATCH --account=a02
 
-DATASET="PANDA" # TCGA, GTEx
-NUM_SUBJOBS=166 # TCGA: 184, GTEx: 397
+DATASET="PANDA"     # TCGA, GTEx
+NUM_SUBJOBS=166     # TCGA: 184, GTEx: 397
 MAX_JOB_NUMBER=2654 #TCGA: 2942 #GTEx: 6338
 
 # PANDA: 10615/4 = 2654, 4 jobs per node, 2654/16=166, split over 16 array jobs
@@ -24,16 +24,16 @@ TOTAL_ROWS=$(awk 'NR>1' ${CSV_FILE} | wc -l)
 HEADER=$(head -1 ${CSV_FILE})
 COLUMN_INDEX=$(echo "${HEADER}" | tr ',' '\n' | awk '/^metadata_path_224$/{print NR}')
 
-JOB_START_IDX=$((SLURM_ARRAY_TASK_ID* NUM_SUBJOBS))
-JOB_END_IDX=$((JOB_START_IDX+ $((NUM_SUBJOBS-1))))
+JOB_START_IDX=$((SLURM_ARRAY_TASK_ID * NUM_SUBJOBS))
+JOB_END_IDX=$((JOB_START_IDX + $((NUM_SUBJOBS - 1))))
 echo $JOB_START_IDX
 echo $JOB_END_IDX
 
 for JOB_IDX in $(seq ${JOB_START_IDX} ${JOB_END_IDX}); do
-    START_IDX=$((JOB_IDX *4))
+    START_IDX=$((JOB_IDX * 4))
     END_IDX=$((START_IDX + 3))
 
-    if [ ${JOB_IDX} -gt ${MAX_JOB_NUMBER} ]; then 
+    if [ ${JOB_IDX} -gt ${MAX_JOB_NUMBER} ]; then
         exit 1 # if the last job has finished, stop the script
     fi
 
@@ -51,5 +51,5 @@ for JOB_IDX in $(seq ${JOB_START_IDX} ${JOB_END_IDX}); do
     done
 
     wait
-done 
+done
 wait

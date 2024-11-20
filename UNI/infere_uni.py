@@ -37,10 +37,12 @@ class TileDataset(Dataset):
         return len(self.coordinates)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
-        x,y = self.coordinates[idx]
+        x, y = self.coordinates[idx]
         tile = np.array(
             self.slide.read_region(
-                location=(x, y), size=(self.patch_size_src, self.patch_size_src), level=self.l
+                location=(x, y),
+                size=(self.patch_size_src, self.patch_size_src),
+                level=self.l,
             ).convert("RGB")
         )
         return self.transform(tile)
@@ -119,13 +121,15 @@ def infer_model_on_wsi(
         print("embeddings: ", embeddings.shape)
         print("coordinates: ", coordinates.shape)
 
-
         os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
-        np.savez_compressed(save_filepath, embeddings=embeddings, coordinates=coordinates)
+        np.savez_compressed(
+            save_filepath, embeddings=embeddings, coordinates=coordinates
+        )
         print("npz file saved: ")
         print(save_filepath)
     else:
         print(f"Skipping {save_filepath}")
+
 
 if __name__ == "__main__":
     # pr = cProfile.Profile()
@@ -144,7 +148,7 @@ if __name__ == "__main__":
         "--model_path",
         type=str,
         required=False,
-        default="/capstor/scratch/cscs/vsubrama/ckpts/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin", 
+        default="/capstor/scratch/cscs/vsubrama/ckpts/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin",
         help="path for saved chkpt",
     )
 
@@ -152,8 +156,8 @@ if __name__ == "__main__":
         "--metadata_path",
         type=str,
         required=False,
-        default="/store/swissai/a02/health_pathology/data/TCGA/LUSC/tiles_metadata_256/TCGA-18-3410-01Z-00-DX1.DB186D75-4AEE-4E1B-83D5-5A1970F03581.json", 
-        #"/store/swissai/a02/health_pathology/data/TCGA/LUSC/tiles_metadata_256/TCGA-22-1017-01Z-00-DX1.9562FE79-A261-42D3-B394-F3E0E2FF7DDA.json",
+        default="/store/swissai/a02/health_pathology/data/TCGA/LUSC/tiles_metadata_256/TCGA-18-3410-01Z-00-DX1.DB186D75-4AEE-4E1B-83D5-5A1970F03581.json",
+        # "/store/swissai/a02/health_pathology/data/TCGA/LUSC/tiles_metadata_256/TCGA-22-1017-01Z-00-DX1.9562FE79-A261-42D3-B394-F3E0E2FF7DDA.json",
         help="path where metadata of wsi resides",
     )
     parser.add_argument(
@@ -181,7 +185,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     device = torch.device(
-        "cuda:"+ str(args.gpu_node) if torch.cuda.is_available() else "cpu"
+        "cuda:" + str(args.gpu_node) if torch.cuda.is_available() else "cpu"
     )
     print("device:", device)
 

@@ -16,6 +16,7 @@ import yaml
 
 valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS"]
 
+
 def add_subfolder(base_dir: str, subfolder_name: str) -> None:
     subdirs = [f.path for f in os.scandir(base_dir) if f.is_dir()]
     for subdir in subdirs:
@@ -45,7 +46,9 @@ def save_metadata_to_file(
     remove_white_areas_bool: bool = False,
 ) -> None:
     if dataset == "TCGA":
-        json_file = f"{data_dir}/{project_id}/tiles_metadata_{patch_size}/{slide_id}.json"
+        json_file = (
+            f"{data_dir}/{project_id}/tiles_metadata_{patch_size}/{slide_id}.json"
+        )
     elif dataset in valid_datasets:
         json_file = f"{data_dir}/tiles_metadata_{patch_size}/{slide_id}.json"
     else:
@@ -89,10 +92,10 @@ def main():
     #               "MHIST": "MHIST_aaa.png",
     #               "CRC100k": "LYM-CLHGDLYK.tif",
     #               "PANDA": "8352937c62fad694f28fdeef9fc8c464.tiff",
-    #               "BACH": "n020.tif", 
+    #               "BACH": "n020.tif",
     #               "BRACS": "BRACS_1499_UDH_2.png",
     #               "MIDOG": "001.tiff"}}
-    
+
     ####### Configs ############################################
     dataset: Literal[tuple(valid_datasets)] = config["dataset"]
     input_prefix = slide_or_image[dataset]
@@ -116,12 +119,12 @@ def main():
     mult = 1
     maxn = None
     bmp = None
-    id_column = id_columns[dataset] 
+    id_column = id_columns[dataset]
     ############################################################
     excluded_or_missing = []
-    df = pd.read_csv(slide_metadata_path, delimiter="\t" if dataset=="TCGA" else None)
+    df = pd.read_csv(slide_metadata_path, delimiter="\t" if dataset == "TCGA" else None)
     if dataset == "TCGA":
-        df_slurm =df[[id_column]]
+        df_slurm = df[[id_column]]
         df_slurm["slide_path"] = (
             data_dir
             + "/"
@@ -135,17 +138,22 @@ def main():
             + "/"
             + df["Project ID"].str.split("TCGA-").str[-1]
             + f"/tiles_metadata_{patch_size}/"
-            + df[id_column].str.split(".svs").str[0] + ".json"
+            + df[id_column].str.split(".svs").str[0]
+            + ".json"
         )
     else:
         if input_prefix == "slides":
-            df_slurm =df[[id_column]]
+            df_slurm = df[[id_column]]
             df_slurm["slide_path"] = data_dir + "/slides/" + df[id_column] + ".svs"
-            df_slurm[f"metadata_path_{patch_size}"] = data_dir + f"/tiles_metadata_{patch_size}/" + df[id_column] + ".json"
-        else: # input_prefix == images
-            df_slurm =df[[id_column]]
-            df_slurm["slide_path"] = data_dir + "/images/" + df[id_column] # + ".tiff"
-            df_slurm[f"metadata_path_{patch_size}"] = data_dir + f"/tiles_metadata_{patch_size}/" + df[id_column] + ".json"
+            df_slurm[f"metadata_path_{patch_size}"] = (
+                data_dir + f"/tiles_metadata_{patch_size}/" + df[id_column] + ".json"
+            )
+        else:  # input_prefix == images
+            df_slurm = df[[id_column]]
+            df_slurm["slide_path"] = data_dir + "/images/" + df[id_column]  # + ".tiff"
+            df_slurm[f"metadata_path_{patch_size}"] = (
+                data_dir + f"/tiles_metadata_{patch_size}/" + df[id_column] + ".json"
+            )
 
     df_slurm.to_csv(f"{data_dir}/{input_prefix}_metadata_slurm.csv", index=False)
     print(df_slurm)
@@ -159,21 +167,39 @@ def main():
                 os.makedirs(f"{data_dir}/tiles_metadata_{patch_size}", exist_ok=True)
             with tqdm(total=len(df)) as pbar:
                 for idx, row in df_slurm.iterrows():
-                    slide_id = row[id_column].split(".svs")[0] if dataset == "TCGA" else row[id_column]
+                    slide_id = (
+                        row[id_column].split(".svs")[0]
+                        if dataset == "TCGA"
+                        else row[id_column]
+                    )
                     pbar.set_postfix_str(slide_id)
                     pbar.update(1)
-                    project_id = row["Project ID"].split("TCGA-")[-1] if dataset == "TCGA" else row["Subject ID"] if dataset == "GTEx" else row["Image_Name"]
-                    if not os.path.exists(row[f"metadata_path_{patch_size}"]) and os.path.exists(row["slide_path"]):
-                        #start_time = time.time()
+                    project_id = (
+                        row["Project ID"].split("TCGA-")[-1]
+                        if dataset == "TCGA"
+                        else (
+                            row["Subject ID"]
+                            if dataset == "GTEx"
+                            else row["Image_Name"]
+                        )
+                    )
+                    if not os.path.exists(
+                        row[f"metadata_path_{patch_size}"]
+                    ) and os.path.exists(row["slide_path"]):
+                        # start_time = time.time()
                         try:
                             slide = openslide.OpenSlide(row["slide_path"])
                         except openslide.lowlevel.OpenSlideUnsupportedFormatError:
-                            print(f"{row['slide_path']}: Unsupported or missing image file")
+                            print(
+                                f"{row['slide_path']}: Unsupported or missing image file"
+                            )
                             excluded_or_missing.append(slide_id)
-                            df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                            df[df[id_column].isin(excluded_or_missing)].to_csv(
+                                f"{data_dir}/excluded_or_missing.csv", index=False
+                            )
                             num_tiles.append(0)
                             continue
-                            #raise openslide.lowlevel.OpenSlideUnsupportedFormatError
+                            # raise openslide.lowlevel.OpenSlideUnsupportedFormatError
                         slide_base_mpp = extract_tissue.slide_base_mpp(slide, slide_id)
                         if slide_base_mpp is not None:
                             try:
@@ -197,7 +223,9 @@ def main():
                                 print("Skipping slide: ", slide)
                         else:
                             grid = []
-                            df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                            df[df[id_column].isin(excluded_or_missing)].to_csv(
+                                f"{data_dir}/excluded_or_missing.csv", index=False
+                            )
 
                         save_metadata_to_file(
                             data_dir=data_dir,
@@ -223,27 +251,37 @@ def main():
                         # end_time = time.time()
                         # elapsed_time = end_time - start_time
                         # print("Elapsed time: ", elapsed_time)
-        else: # debugging!! ,
-            remove_white_areas_bool=False #This should be turned to TRUE if the images are actually WSIs but without header information 
+        else:  # debugging!! ,
+            remove_white_areas_bool = False  # This should be turned to TRUE if the images are actually WSIs but without header information
             os.makedirs(f"{data_dir}/tiles_metadata_{patch_size}", exist_ok=True)
             with tqdm(total=len(df)) as pbar:
                 print(df_slurm)
                 for idx, row in df_slurm.iterrows():
-                    slide_id = row[id_column].split(".")[0] if dataset == "TCGA" else row[id_column]
+                    slide_id = (
+                        row[id_column].split(".")[0]
+                        if dataset == "TCGA"
+                        else row[id_column]
+                    )
                     pbar.set_postfix_str(slide_id)
                     pbar.update(1)
-                    project_id = row["Project ID"].split("TCGA-")[-1] if dataset == "TCGA" else row["Subject ID"] if dataset == "GTEx" else row[id_column]
+                    project_id = (
+                        row["Project ID"].split("TCGA-")[-1]
+                        if dataset == "TCGA"
+                        else row["Subject ID"] if dataset == "GTEx" else row[id_column]
+                    )
 
-                    #start_time = time.time()
+                    # start_time = time.time()
                     try:
                         image = np.array(Image.open(row["slide_path"]))
                     except openslide.lowlevel.OpenSlideUnsupportedFormatError:
                         print(f"{row['slide_path']}: Unsupported or missing image file")
                         excluded_or_missing.append(slide_id)
-                        df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                        df[df[id_column].isin(excluded_or_missing)].to_csv(
+                            f"{data_dir}/excluded_or_missing.csv", index=False
+                        )
                         num_tiles.append(0)
                         continue
-                        #raise openslide.lowlevel.OpenSlideUnsupportedFormatError
+                        # raise openslide.lowlevel.OpenSlideUnsupportedFormatError
                     image_base_mpp = extract_tissue_from_images.image_base_mpp(dataset)
                     if image_base_mpp is not None:
                         try:
@@ -262,13 +300,15 @@ def main():
                                 oversample=oversample,
                                 mult=mult,
                                 base_mpp=image_base_mpp,
-                                remove_white_areas_bool=remove_white_areas_bool
+                                remove_white_areas_bool=remove_white_areas_bool,
                             )
                         except (NotImplementedError, ZeroDivisionError):
                             print("Skipping image: ", row["Image Name"])
                     else:
                         grid = []
-                        df[df[id_column].isin(excluded_or_missing)].to_csv(f"{data_dir}/excluded_or_missing.csv", index=False)
+                        df[df[id_column].isin(excluded_or_missing)].to_csv(
+                            f"{data_dir}/excluded_or_missing.csv", index=False
+                        )
 
                     save_metadata_to_file(
                         data_dir=data_dir,
@@ -289,21 +329,23 @@ def main():
                         oversample=oversample,
                         mult=mult,
                         base_mpp=image_base_mpp,
-                        remove_white_areas_bool=remove_white_areas_bool
+                        remove_white_areas_bool=remove_white_areas_bool,
                     )
                     num_tiles.append(len(grid))
                     # end_time = time.time()
                     # elapsed_time = end_time - start_time
                     # print("Elapsed time: ", elapsed_time)
-    
+
             print(len(df_slurm))
             print(len(num_tiles))
             df_slurm["num_tiles"] = num_tiles
-            df_slurm.to_csv(f"{data_dir}/{input_prefix}_metadata_slurm.csv", index=False)
+            df_slurm.to_csv(
+                f"{data_dir}/{input_prefix}_metadata_slurm.csv", index=False
+            )
 
     # else:
     #     if input_prefix == "slides":
-    #         #df.sample(n=10) # 
+    #         #df.sample(n=10) #
     #         df_sample = df_slurm[df[id_column]==f"{sample_id}.svs"] if dataset == "TCGA" else df_slurm[df_slurm[id_column]==sample_id]
     #         for idx, row in tqdm(df_sample.iterrows(), total=len(df_sample)):
     #             print(row["slide_path"], os.path.exists(row["slide_path"]))
@@ -328,12 +370,12 @@ def main():
     #     else: #debug mode
     #         print("slurm", df_slurm)
     #         print(id_column, sample_id)
-            
+
     #         df_sample = df_slurm[df_slurm[id_column]==sample_id] #.split(".")[0]]
     #         df_sample[id_column] = df_sample[id_column]
     #         print("sample", df_sample)
     #         for idx, row in tqdm(df_sample.iterrows(), total=len(df_sample)):
-                
+
     #             print(row["slide_path"], os.path.exists(row["slide_path"]))
     #             # if os.path.splitext(row["slide_path"])[-1] == "png":
     #             #     image = Image.open(row["slide_path"])
@@ -359,6 +401,7 @@ def main():
     #                 base_mpp=image_base_mpp,
     #                 save=f'{sample_id}_tiling_overview.png',
     #             )
+
 
 if __name__ == "__main__":
     main()
