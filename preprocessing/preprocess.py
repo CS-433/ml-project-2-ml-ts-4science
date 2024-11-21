@@ -304,6 +304,7 @@ def main():
                             )
                         except (NotImplementedError, ZeroDivisionError):
                             print("Skipping image: ", row["Image Name"])
+                            grid = []
                     else:
                         grid = []
                         df[df[id_column].isin(excluded_or_missing)].to_csv(
