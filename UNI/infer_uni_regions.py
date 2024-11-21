@@ -24,12 +24,13 @@ class TileDataset(Dataset):
         self.downsample = downsample
         self.coordinates = coordinates
         self.transform = transform
+        self.slide_path = slide_path
 
     def __len__(self):
         return len(self.coordinates)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
-        with open_slide(slide_path) as slide:  # Must be initialized in each worker
+        with open_slide(self.slide_path) as slide:  # Must be initialized in each worker
             level = slide.get_best_level_for_downsample(self.downsample)
             lvl_f = slide.level_downsamples
             patch_size_src = round(
