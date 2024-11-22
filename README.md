@@ -27,4 +27,25 @@ https://imig.science/midog2021/download-dataset/
 - 0-100 0.23 mpp, 101-200 0.25 mpp
 - Should we crop based on the MIDOG.json file?
 
+# MODEL TRAINNING
+
+After getting the embeddings for each dataset, start trainning with the following pipeline: 
+
+### Mean approach                
+
+| MEAN-POOLING PATCH-LEVEL | -> |Linear clasifier / Multi Layer Perceptron|
+
+### Attention Mechanism approach
+
+| Attention $\sum_k p_k \text{patch}_k$ | -> |Linear clasifier / Multi Layer Perceptron|
+
+### Overview 
+- Attention should work better than Mean pooling approach.
+- Linear classifier, generally, works better when the task is easier.
+- MLP, generally, works better when the task is harder.
+- As UNI is trained with 20x, there should be a pump in the metrics of this resolution.
+  'easier' or 'harder' are related to distinguishability of tissue patterns.
+
+
+
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/UDdkOEMs)
