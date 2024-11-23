@@ -20,11 +20,13 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         }
 
         if self.transform:
-            # Mean-pooling sobre la dimensión E
+            # Mean-pooling over E dimension
             sample["embedding"] = torch.mean(sample["embedding"], dim=0)  # Forma: (1024,)
 
-            # L2 Normalización
-            # sample["embedding"] = F.normalize(sample["embedding"], p=2.0)
+            # L2 Normalization
+            norm = torch.norm(sample["embedding"], p=2)
+            eps = 1e-8
+            sample["embedding"] = sample["embedding"] / (norm + eps)
 
         return sample
     
