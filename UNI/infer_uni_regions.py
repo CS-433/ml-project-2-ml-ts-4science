@@ -16,7 +16,6 @@ class TileDataset(Dataset):
         target_mpp = metadata["mpp"]
         patch_size = metadata["patch_size"]
         coordinates = metadata["tiles"]
-        self.slide = open_slide(slide_path)
         downsample = target_mpp / base_mpp
 
         self.base_mpp = base_mpp
@@ -25,24 +24,25 @@ class TileDataset(Dataset):
         self.downsample = downsample
         self.coordinates = coordinates
         self.transform = transform
+        self.slide_path = slide_path
 
     def __len__(self):
         return len(self.coordinates)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
-        slide = self.slide  
-        level = slide.get_best_level_for_downsample(self.downsample)
-        lvl_f = slide.level_downsamples
-        patch_size_src = round(
-            self.patch_size * (self.target_mpp * lvl_f[level] / self.base_mpp)
-        )
+        with open_slide(self.slide_path) as slide:  # Must be initialized in each worker
+            level = slide.get_best_level_for_downsample(self.downsample)
+            lvl_f = slide.level_downsamples
+            patch_size_src = round(
+                self.patch_size * (self.target_mpp * lvl_f[level] / self.base_mpp)
+            )
 
-        x, y = self.coordinates[idx]
-        tile = np.array(
-            slide.read_region(
-                location=(x, y), size=(patch_size_src, patch_size_src), level=level
-            ).convert("RGB")
-        )
+            x, y = self.coordinates[idx]
+            tile = np.array(
+                slide.read_region(
+                    location=(x, y), size=(patch_size_src, patch_size_src), level=level
+                ).convert("RGB")
+            )
         return self.transform(tile)
 
 
@@ -87,7 +87,6 @@ class SlideProcessor:
             for batch in loader:
                 embeddings.append(self.model(batch.to(device)).cpu().numpy())
 
-        dataset.slide.close()
         return np.vstack(embeddings), np.array(metadata["tiles"])
 
 
