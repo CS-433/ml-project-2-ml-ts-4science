@@ -49,7 +49,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     # Example usage of the EmbeddingsDataset with BACH
-    data_path = "/home/ricoiban/ml-project-2-ml-ts-4science/data/data/BACH/embeddings/embeddings_uni"
+    data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni"
 
 
     # Create the dataset with the stacked tensors
