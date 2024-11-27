@@ -178,11 +178,11 @@ def add2offset(img, image, patch_size, mpp, maxmpp):
     size_x = img.shape[1]
     size_y = img.shape[0]
     offset_x = np.floor(
-        (image.shape[0] * 1.0 / (patch_size * mpp / maxmpp) - size_x)
+        (image.shape[1] * 1.0 / (patch_size * mpp / maxmpp) - size_x)
         * (patch_size * mpp / maxmpp)
     )
     offset_y = np.floor(
-        (image.shape[1] * 1.0 / (patch_size * mpp / maxmpp) - size_y)
+        (image.shape[0] * 1.0 / (patch_size * mpp / maxmpp) - size_y)
         * (patch_size * mpp / maxmpp)
     )
     add_x = np.linspace(0, offset_x, size_x).astype(int)
