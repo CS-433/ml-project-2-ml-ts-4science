@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import argparse
 import logging
+import random
 from typing import List, Tuple
 
 # Configure logging
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def parse_arguments():
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description="Tile Analysis Script")
+    parser = argparse.ArgumentParser(description="Tile Visualization Script")
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -67,29 +68,49 @@ def get_augmentation_levels(dataset: str) -> List[str]:
     else:
         raise ValueError(f"Unknown dataset {dataset}")
 
+def generate_distinct_colors(n: int) -> List[Tuple[int, int, int]]:
+    """
+    Generate a list of visually distinct colors.
+
+    Args:
+        n: Number of colors to generate.
+
+    Returns:
+        List of colors in BGR format.
+    """
+    # Use a colormap to generate distinct colors
+    colormap = cv2.applyColorMap(np.linspace(0, 255, n).astype(np.uint8), cv2.COLORMAP_HSV)
+    colors = [tuple(int(c) for c in colormap[i][0]) for i in range(n)]
+
+    # Shuffle colors to avoid similar colors being adjacent
+    random.shuffle(colors)
+    return colors
+
 def draw_tiles_on_image(
     image: np.ndarray,
     tiles: List[Tuple[int, int]],
     tile_size: int,
-    color=(0, 255, 0),
     thickness=2,
 ) -> np.ndarray:
     """
-    Draw rectangles on the image based on tile coordinates and size.
+    Draw rectangles on the image based on tile coordinates and size,
+    each with a different color.
 
     Args:
         image: The original image.
         tiles: List of tile coordinates (top-left corners).
         tile_size: Size of each tile.
-        color: Rectangle color.
         thickness: Rectangle border thickness.
 
     Returns:
         Image with rectangles drawn.
     """
-    for x, y in tiles:
+    num_tiles = len(tiles)
+    colors = generate_distinct_colors(num_tiles)
+    for idx, (x, y) in enumerate(tiles):
         top_left = (int(x), int(y))
         bottom_right = (int(x + tile_size), int(y + tile_size))
+        color = colors[idx]
         cv2.rectangle(image, top_left, bottom_right, color, thickness)
     return image
 
@@ -108,9 +129,7 @@ def rectangles_overlap(
     """
     x1_min, y1_min, x1_max, y1_max = rect1
     x2_min, y2_min, x2_max, y2_max = rect2
-    overlap_x = max(0, min(x1_max, x2_max) - max(x1_min, x2_min))
-    overlap_y = max(0, min(y1_max, y2_max) - max(y1_min, y2_min))
-    return overlap_x > 0 and overlap_y > 0
+    return not (x1_max <= x2_min or x2_max <= x1_min or y1_max <= y2_min or y2_max <= y1_min)
 
 def check_overlaps(
     tiles: List[Tuple[int, int]], tile_size: int
