@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
-import models.LinearModel as ln
+import models
 from dataset import EmbeddingsDataset as ds
 from collections import Counter
 
@@ -14,7 +14,7 @@ torch.manual_seed(42)
 data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni"
 label_path = "/scratch/izar/dlopez/ml4science/data/BACH/labels.csv"
 
-dataset = ds(data_path, label_path, transform=True)
+dataset = ds(data_path, label_path)
 
 # Extract labels and indices
 indices = list(range(len(dataset)))
@@ -52,7 +52,10 @@ val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 # Create the model
-model = ln.LinearModel(1024, dataset.num_classes)  # Assuming 4 classes
+input_dim = 1024
+print(dataset.num_classes)
+dropout = 0 # {0, 0.2, 0.5}
+model = models.AttentionMLP(input_dim, dataset.num_classes)
 
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()

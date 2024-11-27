@@ -5,7 +5,7 @@ import os
 import csv
 
 class EmbeddingsDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, label_path, transform=False):
+    def __init__(self, data_path, label_path):
         """
         Initializes the dataset with embeddings, coordinates, labels, and file names.
 
@@ -15,7 +15,6 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
             transform (bool): Whether to apply transformations.
         """
         self.embeddings, self.coordinates, self.labels, self.file_names = self.create_dataset(data_path, label_path)
-        self.transform = transform
         self.data_path = data_path
 
         # Build label mapping
@@ -46,7 +45,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         """
         label_idx = self.labels[idx]
         label_str = self.label_strings[idx]
-        one_hot_label = F.one_hot(label_idx, num_classes=self.num_classes).float()
+        one_hot_label = F.one_hot(label_idx, num_classes=self.num_classes)
 
         sample = {
             "embedding": self.embeddings[idx],      # Shape: (E, 1024)
@@ -56,13 +55,6 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
             "one_hot_label": one_hot_label,         # Shape: (num_classes,)
             "file_name": self.file_names[idx]       # Shape: () - Single file name
         }
-
-        if self.transform:
-            # Mean-pooling over E dimension
-            sample["embedding"] = torch.mean(sample["embedding"], dim=0)  # Shape: (1024,)
-
-            # L2 Normalization using custom function
-            sample["embedding"] = self.my_normalize(sample["embedding"], p=2.0)
 
         return sample
 
@@ -107,24 +99,19 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
                 file_name, class_label = row
                 label_dict[file_name.strip()] = class_label.strip()
 
-        for file in os.listdir(data_path):
-            if file.endswith(".npz"):
-                data = np.load(os.path.join(data_path, file))
-                file_name = file.split(".")[0] + ".tif"  # Ensure it matches labels.csv format
+        npz_files = [f for f in os.listdir(data_path) if f.endswith('.npz')]
+        for file in npz_files:
+            with np.load(os.path.join(data_path, file)) as data:
+                embeddings.append(torch.from_numpy(data["embeddings"]))
+                coordinates.append(torch.from_numpy(data["coordinates"]))
 
-                # Retrieve the class label from the label_dict
-                class_label = label_dict.get(file_name, "Unknown")  # Default to "Unknown" if not found
+            file_name = file.replace('.npz', '')
+            class_label = label_dict.get(file_name)
+            labels.append(class_label)
 
-                # Append embeddings and coordinates
-                embeddings.append(torch.tensor(data["embeddings"]))
-                coordinates.append(torch.tensor(data["coordinates"]))
+            file_names.append(file_name)
 
-                # Append the label and file name
-                labels.append(class_label)
-                file_names.append(file_name)
-
-        # Stack the embeddings and coordinates along the first dimension (N)
-        embeddings = torch.stack(embeddings, dim=0)       # Shape: (N, E, 1024)
+        embeddings = torch.stack(embeddings, dim=0)       # Shape: (n_samples, n_tiles, uni_embedding_dimension)
         coordinates = torch.stack(coordinates, dim=0)    # Shape: (N, E, ...)
 
         return embeddings, coordinates, labels, file_names
