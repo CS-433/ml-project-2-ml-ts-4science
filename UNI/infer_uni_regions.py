@@ -12,7 +12,7 @@ from PIL import Image
 
 
 class TileDataset(Dataset):
-    def __init__(self, slide_path: str, metadata: Dict, transform, debug_save_path="debug"):
+    def __init__(self, slide_path: str, metadata: Dict, transform, debug_save_path=None):
         base_mpp = metadata["base_mpp"]
         target_mpp = metadata["mpp"]
         patch_size = metadata["patch_size"]
@@ -86,7 +86,7 @@ class SlideProcessor:
         self.batch_size = batch_size
 
     def process_tiles(self, slide_path: str, metadata: Dict) -> np.ndarray:
-        dataset = TileDataset(slide_path, metadata, self.transform)
+        dataset = TileDataset(slide_path, metadata, self.transform, debug_save_path="dbeug")
         loader = DataLoader(
             dataset, batch_size=self.batch_size, num_workers=8, pin_memory=True
         )
@@ -107,9 +107,10 @@ def infer_model_on_region(
     device: str,
     patch_size: int,
     input_size: int,
+    magnification: str = "",
 ) -> None:
     # save embeddings and coordinates as npz
-    save_filepath = slide_path.replace("images", "embeddings/embeddings_uni").replace(
+    save_filepath = slide_path.replace("images", f"embeddings/embeddings_uni{magnification}").replace(
         ".tiff", ".npz"
     )
 
@@ -223,7 +224,7 @@ if __name__ == "__main__":
     print("slide path: ", slide_path)
 
     infer_model_on_region(
-        slide_path, metadata_path, model_path, device, patch_size, input_size
+        slide_path, metadata_path, model_path, device, patch_size, input_size, magnification
     )
 
     # pr.disable()
