@@ -8,10 +8,11 @@ from typing import Dict
 from openslide import open_slide
 from torch.utils.data import DataLoader, Dataset
 import argparse
+from PIL import Image
 
 
 class TileDataset(Dataset):
-    def __init__(self, slide_path: str, metadata: Dict, transform):
+    def __init__(self, slide_path: str, metadata: Dict, transform, debug_save_path=None):
         base_mpp = metadata["base_mpp"]
         target_mpp = metadata["mpp"]
         patch_size = metadata["patch_size"]
@@ -25,6 +26,7 @@ class TileDataset(Dataset):
         self.coordinates = coordinates
         self.transform = transform
         self.slide_path = slide_path
+        self.debug_save_path = debug_save_path  # Path to save tiles for debugging
 
     def __len__(self):
         return len(self.coordinates)
@@ -43,6 +45,13 @@ class TileDataset(Dataset):
                     location=(x, y), size=(patch_size_src, patch_size_src), level=level
                 ).convert("RGB")
             )
+
+        # Save the tile for debugging purposes if debug_save_path is set
+        if self.debug_save_path is not None:
+            os.makedirs(self.debug_save_path, exist_ok=True)
+            debug_tile_path = os.path.join(self.debug_save_path, f"tile_{idx}.png")
+            Image.fromarray(tile).save(debug_tile_path)
+
         return self.transform(tile)
 
 
@@ -77,7 +86,7 @@ class SlideProcessor:
         self.batch_size = batch_size
 
     def process_tiles(self, slide_path: str, metadata: Dict) -> np.ndarray:
-        dataset = TileDataset(slide_path, metadata, self.transform)
+        dataset = TileDataset(slide_path, metadata, self.transform, debug_save_path="dbeug")
         loader = DataLoader(
             dataset, batch_size=self.batch_size, num_workers=8, pin_memory=True
         )
@@ -86,6 +95,7 @@ class SlideProcessor:
         with torch.no_grad():
             for batch in loader:
                 embeddings.append(self.model(batch.to(device)).cpu().numpy())
+                break
 
         return np.vstack(embeddings), np.array(metadata["tiles"])
 
@@ -97,9 +107,10 @@ def infer_model_on_region(
     device: str,
     patch_size: int,
     input_size: int,
+    magnification: str = "",
 ) -> None:
     # save embeddings and coordinates as npz
-    save_filepath = slide_path.replace("images", "embeddings/embeddings_uni").replace(
+    save_filepath = slide_path.replace("images", f"embeddings/embeddings_uni{magnification}").replace(
         ".tiff", ".npz"
     )
 
@@ -202,14 +213,18 @@ if __name__ == "__main__":
         ).replace(".json", ".tiff")
 
     else:
-        slide_path = metadata_path.replace(
-            f"tiles_metadata_{patch_size}", "images"
-        ).replace(".json", "")
+        slide_path = metadata_path.split("/")
+        slide_path[-2] = "images" # replace tiles_metadata... with images
+        slide_path = "/".join(slide_path).replace(".json", "")
+
+    magnification = ""
+    magnification = next((mag for mag in ["_5x", "_10x", "_20x", "_40x"] if mag in metadata_path), "")
+    print("magnification: ", magnification)
 
     print("slide path: ", slide_path)
 
     infer_model_on_region(
-        slide_path, metadata_path, model_path, device, patch_size, input_size
+        slide_path, metadata_path, model_path, device, patch_size, input_size, magnification
     )
 
     # pr.disable()
