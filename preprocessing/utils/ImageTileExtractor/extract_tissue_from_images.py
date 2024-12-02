@@ -235,6 +235,7 @@ def make_sample_grid(
     centerpixel=False,
     base_mpp=None,
     remove_white_areas_bool=False,
+    allow_tile_overlap=True,
 ):
     """
     Script that given an openslide object return a list of tuples
@@ -286,6 +287,10 @@ def make_sample_grid(
         add_x, add_y = add2offset(img, image, patch_size, base_mpp, base_mpp)
     else:
         add_x, add_y = add2offset(img, image, patch_size, mpp, base_mpp)
+
+    if not allow_tile_overlap:
+        add_x = np.zeros_like(add_x)
+        add_y = np.zeros_like(add_y)
 
     w = np.where(img > 0)
 
