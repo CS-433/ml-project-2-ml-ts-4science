@@ -44,6 +44,7 @@ def save_metadata_to_file(
     oversample: bool,
     mult: float,
     remove_white_areas_bool: bool = False,
+    allow_tile_overlap: bool = True,
 ) -> None:
     if dataset == "TCGA":
         json_file = (
@@ -74,6 +75,7 @@ def save_metadata_to_file(
                 "mult": mult,
                 "tiles": tiles,
                 "remove_white_areas_bool": remove_white_areas_bool,
+                "allow_tile_overlap": allow_tile_overlap,
             },
             f,
             indent=4,
@@ -120,6 +122,7 @@ def main():
     maxn = None
     bmp = None
     id_column = id_columns[dataset]
+    allow_tile_overlap = False
     ############################################################
     excluded_or_missing = []
     df = pd.read_csv(slide_metadata_path, delimiter="\t" if dataset == "TCGA" else None)
@@ -301,6 +304,7 @@ def main():
                                 mult=mult,
                                 base_mpp=image_base_mpp,
                                 remove_white_areas_bool=remove_white_areas_bool,
+                                allow_tile_overlap=allow_tile_overlap,
                             )
                         except (NotImplementedError, ZeroDivisionError):
                             print("Skipping image: ", row["Image Name"])
@@ -331,6 +335,7 @@ def main():
                         mult=mult,
                         base_mpp=image_base_mpp,
                         remove_white_areas_bool=remove_white_areas_bool,
+                        allow_tile_overlap=allow_tile_overlap,
                     )
                     num_tiles.append(len(grid))
                     # end_time = time.time()
