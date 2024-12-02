@@ -40,11 +40,26 @@ class TileDataset(Dataset):
             )
 
             x, y = self.coordinates[idx]
-            tile = np.array(
-                slide.read_region(
-                    location=(x, y), size=(patch_size_src, patch_size_src), level=level
-                ).convert("RGB")
-            )
+
+            # Read the region with alpha channel (RGBA mode)
+            region = slide.read_region(
+                location=(x, y), size=(patch_size_src, patch_size_src), level=level
+            ).convert("RGBA")
+
+            # Convert to NumPy array
+            tile = np.array(region)
+
+            # Identify padding pixels where alpha channel is 0. (alpha is transparency)
+            padding_mask = tile[:, :, 3] == 0
+
+            # Replace padding pixels with white color [255, 255, 255, 255]
+            tile[padding_mask] = [255, 255, 255, 255]
+
+            # Convert back to image and then to RGB mode
+            tile_image = Image.fromarray(tile).convert("RGB")
+
+            # Convert back to NumPy array if needed
+            tile = np.array(tile_image)
 
         # Save the tile for debugging purposes if debug_save_path is set
         if self.debug_save_path is not None:
