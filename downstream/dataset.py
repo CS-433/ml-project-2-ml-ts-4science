@@ -6,9 +6,10 @@ import csv
 
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
+from torch_geometric.data import Dataset
 
 
-class EmbeddingsDataset(torch.utils.data.Dataset):
+class EmbeddingsDataset(Dataset):
     def __init__(self, data_path, label_path, transform=False):
         """
         Initializes the dataset with embeddings, coordinates, labels, and file names.
@@ -25,7 +26,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         self.unique_labels = sorted(set(self.labels))
         self.label_to_index = {label: idx for idx, label in enumerate(self.unique_labels)}
         self.index_to_label = {idx: label for label, idx in self.label_to_index.items()}
-        self.num_classes = len(self.unique_labels)
+        # self.num_classes = len(self.unique_labels)
 
         # Convert labels to indices
         self.label_strings = self.labels.copy()  # Keep the original labels as strings
@@ -49,7 +50,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         """
         label_idx = self.labels[idx]
         label_str = self.label_strings[idx]
-        one_hot_label = F.one_hot(label_idx, num_classes=self.num_classes)
+        # one_hot_label = F.one_hot(label_idx, num_classes=self.num_classes)
 
         # sample = {
         #     "embedding": self.embeddings[idx],      # Shape: (E, 1024)
@@ -61,8 +62,8 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         # }
 
 
-        sample = Data(x=torch.FloatTensor(self.embeddings[idx]),
-                        y=torch.tensor(one_hot_label))
+        sample = Data(x=torch.FloatTensor(self.embeddings[idx].reshape(1,-1,1024)),
+                        y=torch.tensor(label_idx))
 
         return sample
 
@@ -159,9 +160,9 @@ if __name__ == "__main__":
     # Test if the DataLoader works correctly
     print("\nTesting DataLoader with a single batch:")
     for batch in dataloader:
-        print(f"Batch embedding shape: {batch.shape}")      # Should be (batch_size, 1024)
+        print(f"Batch embedding shape: {len(batch)}")      # Should be (batch_size, 1024)
         # print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
         # print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
-        print(f"Batch one-hot labels: {batch.y}")         # Print batch one-hot labels
+        print(f"Batch labels: {batch.y}")         # Print batch one-hot labels
         # print(f"Batch file names: {batch['file_name']}")                 # Print batch file names
         break
