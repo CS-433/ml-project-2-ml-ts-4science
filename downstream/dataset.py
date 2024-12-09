@@ -4,8 +4,10 @@ import numpy as np
 import os
 import csv
 
+from torch_geometric.data import Data
+
 class EmbeddingsDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, label_path):
+    def __init__(self, data_path, label_path, transform=False):
         """
         Initializes the dataset with embeddings, coordinates, labels, and file names.
 
@@ -47,14 +49,18 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         label_str = self.label_strings[idx]
         one_hot_label = F.one_hot(label_idx, num_classes=self.num_classes)
 
-        sample = {
-            "embedding": self.embeddings[idx],      # Shape: (E, 1024)
-            "coordinate": self.coordinates[idx],    # Shape: (E, ...)
-            "label_idx": label_idx,                 # Shape: () - label index
-            "label_str": label_str,                 # Original label string
-            "one_hot_label": one_hot_label,         # Shape: (num_classes,)
-            "file_name": self.file_names[idx]       # Shape: () - Single file name
-        }
+        # sample = {
+        #     "embedding": self.embeddings[idx],      # Shape: (E, 1024)
+        #     "coordinate": self.coordinates[idx],    # Shape: (E, ...)
+        #     "label_idx": label_idx,                 # Shape: () - label index
+        #     "label_str": label_str,                 # Original label string
+        #     "one_hot_label": one_hot_label,         # Shape: (num_classes,)
+        #     "file_name": self.file_names[idx]       # Shape: () - Single file name
+        # }
+
+
+        sample = Data(x=torch.FloatTensor(self.embeddings[idx]),
+                        y=torch.tensor(one_hot_label))
 
         return sample
 
@@ -119,7 +125,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     # Example usage of the EmbeddingsDataset with BACH
-    data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni"
+    data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni_5x"
     label_path = "/scratch/izar/dlopez/ml4science/data/BACH/labels.csv"
 
     # Create the dataset with the stacked tensors
@@ -131,19 +137,18 @@ if __name__ == "__main__":
     
     print(f"Total number of samples in the dataset: {len(dataset)}")
     
-    print(f"Shape of the embedding vector in the first sample: {dataset[0]['embedding'].shape}")      # Should be (1024,)
-    print(f"Shape of the coordinate data in the first sample: {dataset[0]['coordinate'].shape}")    # Should match the coordinate dimensions
+    print(f"Shape of the embedding vector in the first sample: {dataset[0].x.shape}")      # Should be (1024,)
     
     print("Embedding vector of the first sample:")
-    print(dataset[0]["embedding"])            # Print the embedding vector
+    print(dataset[0].x)            # Print the embedding vector
     
-    print("Coordinate data of the first sample:")
-    print(dataset[0]["coordinate"])           # Print the coordinate data
+    # print("Coordinate data of the first sample:")
+    # print(dataset[0]["coordinate"])           # Print the coordinate data
     
-    print(f"Label index of the first sample: {dataset[0]['label_idx']}")  # Print the label index
-    print(f"Label string of the first sample: {dataset[0]['label_str']}")  # Print the label string
-    print(f"One-hot label of the first sample: {dataset[0]['one_hot_label']}")  # Print the one-hot label
-    print(f"File name of the first sample: {dataset[0]['file_name']}")  # Print the file name
+    # print(f"Label index of the first sample: {dataset[0]['label_idx']}")  # Print the label index
+    # print(f"Label string of the first sample: {dataset[0]['label_str']}")  # Print the label string
+    print(f"One-hot label of the first sample: {dataset[0].y}")  # Print the one-hot label
+    # print(f"File name of the first sample: {dataset[0]['file_name']}")  # Print the file name
     
     # Initialize the DataLoader
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
@@ -151,9 +156,9 @@ if __name__ == "__main__":
     # Test if the DataLoader works correctly
     print("\nTesting DataLoader with a single batch:")
     for batch in dataloader:
-        print(f"Batch embedding shape: {batch['embedding'].shape}")      # Should be (batch_size, 1024)
-        print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
-        print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
-        print(f"Batch one-hot labels: {batch['one_hot_label']}")         # Print batch one-hot labels
-        print(f"Batch file names: {batch['file_name']}")                 # Print batch file names
+        print(f"Batch embedding shape: {batch.x.shape}")      # Should be (batch_size, 1024)
+        # print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
+        # print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
+        print(f"Batch one-hot labels: {batch.y}")         # Print batch one-hot labels
+        # print(f"Batch file names: {batch['file_name']}")                 # Print batch file names
         break
