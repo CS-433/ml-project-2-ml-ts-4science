@@ -5,6 +5,8 @@ import os
 import csv
 
 from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
+
 
 class EmbeddingsDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, label_path, transform=False):
@@ -33,7 +35,7 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         """
         Returns the number of samples in the dataset.
         """
-        return self.embeddings.shape[0]   # N
+        return len(self.embeddings)   # N
 
     def __getitem__(self, idx):
         """
@@ -109,6 +111,8 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
         for file in npz_files:
             with np.load(os.path.join(data_path, file)) as data:
                 embeddings.append(torch.from_numpy(data["embeddings"]))
+
+
                 coordinates.append(torch.from_numpy(data["coordinates"]))
 
             file_name = file.replace('.npz', '')
@@ -117,15 +121,14 @@ class EmbeddingsDataset(torch.utils.data.Dataset):
 
             file_names.append(file_name)
 
-        embeddings = torch.stack(embeddings, dim=0)       # Shape: (n_samples, n_tiles, uni_embedding_dimension)
-        coordinates = torch.stack(coordinates, dim=0)    # Shape: (N, E, ...)
+        
 
         return embeddings, coordinates, labels, file_names
 
 
 if __name__ == "__main__":
     # Example usage of the EmbeddingsDataset with BACH
-    data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni_5x"
+    data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni"
     label_path = "/scratch/izar/dlopez/ml4science/data/BACH/labels.csv"
 
     # Create the dataset with the stacked tensors
@@ -151,12 +154,12 @@ if __name__ == "__main__":
     # print(f"File name of the first sample: {dataset[0]['file_name']}")  # Print the file name
     
     # Initialize the DataLoader
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
     
     # Test if the DataLoader works correctly
     print("\nTesting DataLoader with a single batch:")
     for batch in dataloader:
-        print(f"Batch embedding shape: {batch.x.shape}")      # Should be (batch_size, 1024)
+        print(f"Batch embedding shape: {batch.shape}")      # Should be (batch_size, 1024)
         # print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
         # print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
         print(f"Batch one-hot labels: {batch.y}")         # Print batch one-hot labels
