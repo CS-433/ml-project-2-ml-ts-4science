@@ -115,3 +115,6 @@ outputs/*
 
 *.toml
 *.lock
+
+
+**/lightning_logs/** 
