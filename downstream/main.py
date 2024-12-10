@@ -9,13 +9,16 @@ from dataset import EmbeddingsDataset
 from collections import Counter
 import pytorch_lightning as pl
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # Set the random seed for reproducibility
 torch.manual_seed(42)
 
 # Create the dataset
-data_path = "/scratch/izar/dlopez/ml4science/data/BACH/embeddings/embeddings_uni"
-label_path = "/scratch/izar/dlopez/ml4science/data/BACH/labels.csv"
+path = "/mnt/lts4-pathofm/scratch/data/ml4science/BACH/"
+data_path = path + "embeddings/embeddings_uni_5x/"
+label_path = path + "labels.csv"
 
 # Create the dataset with the stacked tensors
 dataset = EmbeddingsDataset(data_path, label_path, transform=True)
@@ -33,18 +36,20 @@ for class_label, count in class_counts.items():
 
 # Stratified split into train (70%) and temp (30%)
 train_indices, temp_indices, train_labels, temp_labels = train_test_split(
-    indices, labels_list, test_size=0.3, stratify=labels_list, random_state=42)
+    indices, labels_list, test_size=0.3, stratify=labels_list, random_state=42
+)
 
 # Further stratified split of temp into val (15%) and test (15%)
 val_indices, test_indices, val_labels, test_labels = train_test_split(
-    temp_indices, temp_labels, test_size=0.5, stratify=temp_labels, random_state=42)
+    temp_indices, temp_labels, test_size=0.5, stratify=temp_labels, random_state=42
+)
 
 # Create Subset objects
 train_dataset = Subset(dataset, train_indices)
 val_dataset = Subset(dataset, val_indices)
 test_dataset = Subset(dataset, test_indices)
 
-# Print the number of classes in each class 
+# Print the number of classes in each class
 print(f"Number of classes in train set: {len(set(train_labels))}")
 print(f"Number of classes in val set: {len(set(val_labels))}")
 
@@ -55,31 +60,29 @@ val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
 
 
-
 # Initialize the model
 input_dim = 1024
-embed_dim = 128 # This corresponds to internal embed size of Gated Attention.
-model = models.AttentionMLP(input_dim=input_dim, output_dim=dataset.num_labels, embed_dim=embed_dim, dropout_rate=0)
+embed_dim = 128  # This corresponds to internal embed size of Gated Attention.
+model = models.AttentionMLP(
+    input_dim=input_dim,
+    output_dim=dataset.num_labels,
+    embed_dim=embed_dim,
+    dropout_rate=0,
+).to(device)
 
 # Early stopping and checkpoint callbacks
-early_stopping = pl.callbacks.EarlyStopping(
-    monitor='val_loss',
-    patience=5,
-    mode='min'
-)
+early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", patience=5, mode="min")
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
-    monitor='val_loss',
-    dirpath='.',
-    filename='best_model',
-    save_top_k=1,
-    mode='min'
+    monitor="val_loss", dirpath=".", filename="best_model", save_top_k=1, mode="min"
 )
 
 # Initialize the trainer
 trainer = pl.Trainer(
     max_epochs=100,
-    callbacks=[early_stopping, checkpoint_callback]
+    callbacks=[early_stopping, checkpoint_callback],
+    accelerator="cuda" if torch.cuda.is_available() else None,
+    devices=1,
 )
 
 # Train the model
