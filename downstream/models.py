@@ -58,12 +58,12 @@ class GatedAttention(nn.Module):
         self.ATTENTION_BRANCHES = 1
         
         self.attention_V = nn.Sequential(
-            nn.Linear(self.input_dim, self.emb_dim), # matrix V
+            nn.LazyLinear(out_features=emb_dim), # matrix V
             nn.Tanh()
         )
 
         self.attention_U = nn.Sequential(
-            nn.Linear(self.input_dim, self.emb_dim), # matrix U
+            nn.LazyLinear(out_features=emb_dim), # matrix U
             nn.Sigmoid()
         )
 
@@ -74,8 +74,7 @@ class GatedAttention(nn.Module):
         """
         Parameters
         ----------
-        x_nodes : transform(data.x)
-            all node features or embeddings
+
         data : batch data loaded from torch geometric dataset
             
         Returns
@@ -140,7 +139,7 @@ class MLP(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch.x, batch.y
-        print("[MLP] Training step with ", x, " and ", y)
+        # print("[MLP] Training step with ", x, " and ", y)
         outputs = self.forward(x)
         loss = self.criterion(outputs, y)
         return loss
@@ -150,20 +149,20 @@ class MLP(pl.LightningModule):
         return optimizer
 
 class AttentionMLP(pl.LightningModule):
-    def __init__(self, input_dim, output_dim, batch_dim, hidden_dim=128, dropout_rate=0):
+    def __init__(self, input_dim, output_dim, embed_dim = 128, hidden_dim=128, dropout_rate=0):
         super(AttentionMLP, self).__init__()
 
-        self.attention = GatedAttention(batch_dim, input_dim)
+        self.attention = GatedAttention(input_dim, embed_dim)
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.dropout = nn.Dropout(dropout_rate)
         self.criterion = nn.CrossEntropyLoss()
         self.learning_rate = 1e-3
-
+        self.validation_step_outputs = []
     def forward(self, batch):
         
         attention_weights, x = self.attention(batch)  # Shape: (n_samples, n_tiles, 1)
-        x = torch.sum(attention_weights * x, dim=1)  # Shape: (n_samples, n_dim)
+        # x = torch.sum(attention_weights * x, dim=1)  # Shape: (n_samples, n_dim)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)  # Shape: (n_samples, output_dim)
@@ -172,11 +171,26 @@ class AttentionMLP(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch.x, batch.y
-        print("[AttMLP] Training step with ", x, " and ", y)
+        # print("[AttMLP] Training step with ", x, " and ", y)
 
         outputs = self.forward(batch)
         loss = self.criterion(outputs, y)
         return loss
+        
+    def validation_step(self, batch, batch_idx):
+        outputs = self(batch)
+        loss = self.criterion(outputs, batch.y)
+        self.log('val_loss', loss, on_epoch=True)
+        self.validation_step_outputs.append(loss)
+        return loss
+    
+
+    def on_validation_epoch_end(self):
+        epoch_average = torch.stack(self.validation_step_outputs).mean()
+        self.log("validation_epoch_average", epoch_average)
+        self.validation_step_outputs.clear()  # free memory
+
+        print("validation epoch average", epoch_average)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
