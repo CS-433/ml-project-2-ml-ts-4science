@@ -162,7 +162,7 @@ class AttentionMLP(pl.LightningModule):
 
     def forward(self, batch):
         
-        attention_scores, x = self.attention(batch)  # Shape: (n_samples, n_tiles, 1)
+        attention_weights, x = self.attention(batch)  # Shape: (n_samples, n_tiles, 1)
         x = torch.sum(attention_weights * x, dim=1)  # Shape: (n_samples, n_dim)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
