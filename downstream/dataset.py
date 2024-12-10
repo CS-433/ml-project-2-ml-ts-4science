@@ -19,6 +19,7 @@ class EmbeddingsDataset(Dataset):
             label_path (str): Path to the labels.csv file.
             transform (bool): Whether to apply transformations.
         """
+        super().__init__()
         self.embeddings, self.coordinates, self.labels, self.file_names = self.create_dataset(data_path, label_path)
         self.data_path = data_path
 
@@ -31,6 +32,7 @@ class EmbeddingsDataset(Dataset):
         # Convert labels to indices
         self.label_strings = self.labels.copy()  # Keep the original labels as strings
         self.labels = torch.tensor([self.label_to_index[label] for label in self.labels])
+        self.num_labels = len(self.unique_labels)
 
     def __len__(self):
         """
@@ -62,7 +64,7 @@ class EmbeddingsDataset(Dataset):
         # }
 
 
-        sample = Data(x=torch.FloatTensor(self.embeddings[idx].reshape(1,-1,1024)),
+        sample = Data(x=torch.FloatTensor(self.embeddings[idx]),
                         y=torch.tensor(label_idx))
 
         return sample
@@ -160,9 +162,9 @@ if __name__ == "__main__":
     # Test if the DataLoader works correctly
     print("\nTesting DataLoader with a single batch:")
     for batch in dataloader:
-        print(f"Batch embedding shape: {len(batch)}")      # Should be (batch_size, 1024)
+
+        print(f"Batch embedding shape: {batch.x.shape}")      # Should be (batch_size, 1024)
         # print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
         # print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
         print(f"Batch labels: {batch.y}")         # Print batch one-hot labels
         # print(f"Batch file names: {batch['file_name']}")                 # Print batch file names
-        break
