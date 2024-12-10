@@ -48,16 +48,17 @@ test_dataset = Subset(dataset, test_indices)
 print(f"Number of classes in train set: {len(set(train_labels))}")
 print(f"Number of classes in val set: {len(set(val_labels))}")
 
+batch_dim = 4
 # Create DataLoaders
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
 
 
 
 # Initialize the model
 input_dim = 1024
-model = models.AttentionMLP(input_dim=input_dim, output_dim=dataset.num_labels, dropout_rate=0)
+model = models.AttentionMLP(input_dim=input_dim, output_dim=dataset.num_labels, batch_dim=batch_dim, dropout_rate=0)
 
 # Early stopping and checkpoint callbacks
 early_stopping = pl.callbacks.EarlyStopping(
