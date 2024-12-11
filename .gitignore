@@ -118,3 +118,10 @@ outputs/*
 
 
 **/lightning_logs/** 
+
+
+
+*.ckpt
+
+**logs**
+**results**
