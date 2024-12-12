@@ -27,6 +27,18 @@ https://imig.science/midog2021/download-dataset/
 - 0-100 0.23 mpp, 101-200 0.25 mpp
 - Should we crop based on the MIDOG.json file?
 
+#### BCNB
+https://bupt-ai-cz.github.io/BCNB/
+
+#### BreakHis
+https://web.inf.ufpr.br/vri/databases/breast-cancer-histopathological-database-breakhis/
+
+#### PanopTILs
+https://sites.google.com/view/panoptils
+The PanopTILs has a region-level task (i.e. prediction is a segmentation), and a cell-level task (for which you will need to add Cell-ViT on top of the UNI embeddings). You could look at this dataset last, after you process the other 4.
+
+#### MIDOG - discarded
+
 # MODEL TRAINNING
 
 After getting the embeddings for each dataset, start trainning with the following pipeline: 

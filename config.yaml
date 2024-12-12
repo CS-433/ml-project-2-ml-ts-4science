@@ -1,6 +1,6 @@
-dataset: MIDOG
-data_dir: /home/carlos/ml-project-2-ml-ts-4science/data
-mpp: 2
+dataset: BRACS
+data_dir: /mnt/lts4-pathofm/scratch/data/ml4science/
+mpp: 0.25
 
 datasets:
   TCGA:
