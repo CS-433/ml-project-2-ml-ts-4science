@@ -101,7 +101,7 @@ class SlideProcessor:
         self.batch_size = batch_size
 
     def process_tiles(self, slide_path: str, metadata: Dict) -> np.ndarray:
-        dataset = TileDataset(slide_path, metadata, self.transform, debug_save_path="dbeug")
+        dataset = TileDataset(slide_path, metadata, self.transform)
         loader = DataLoader(
             dataset, batch_size=self.batch_size, num_workers=8, pin_memory=True
         )
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         "--model_path",
         type=str,
         required=False,
-        default="/scratch/izar/carlos/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin",
+        default="/mnt/lts4-pathofm/scratch/data/ml4science/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin",
         help="path for saved chkpt",
     )
 

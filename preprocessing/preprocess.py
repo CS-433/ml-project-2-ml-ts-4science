@@ -16,6 +16,13 @@ import yaml
 
 valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS"]
 
+mpp_to_magnification = {
+    0.25: "_40x",
+    0.5: "_20x",
+    1: "_10x",
+    2: "_5x",
+}
+
 
 def add_subfolder(base_dir: str, subfolder_name: str) -> None:
     subdirs = [f.path for f in os.scandir(base_dir) if f.is_dir()]
@@ -45,13 +52,14 @@ def save_metadata_to_file(
     mult: float,
     remove_white_areas_bool: bool = False,
     allow_tile_overlap: bool = True,
+    magnification: str = "",
 ) -> None:
     if dataset == "TCGA":
         json_file = (
             f"{data_dir}/{project_id}/tiles_metadata_{patch_size}/{slide_id}.json"
         )
     elif dataset in valid_datasets:
-        json_file = f"{data_dir}/tiles_metadata_{patch_size}/{slide_id}.json"
+        json_file = f"{data_dir}/tiles_metadata_{patch_size}{magnification}/{slide_id}.json"
     else:
         raise ValueError(f"Unknown dataset {dataset}!")
     with open(json_file, "w") as f:
@@ -111,6 +119,7 @@ def main():
     mode: Literal["generate_metadata", "debug"] = "generate_metadata"
     patch_size = 224
     mpp = config["mpp"]
+    magnification = mpp_to_magnification.get(mpp, "")
     min_cc_size = 10
     max_ratio_size = 10
     overlap = 1
@@ -155,10 +164,10 @@ def main():
             df_slurm = df[[id_column]]
             df_slurm["slide_path"] = data_dir + "/images/" + df[id_column]  # + ".tiff"
             df_slurm[f"metadata_path_{patch_size}"] = (
-                data_dir + f"/tiles_metadata_{patch_size}/" + df[id_column] + ".json"
+                data_dir + f"/tiles_metadata_{patch_size}{magnification}/" + df[id_column] + ".json"
             )
 
-    df_slurm.to_csv(f"{data_dir}/{input_prefix}_metadata_slurm.csv", index=False)
+    df_slurm.to_csv(f"{data_dir}/{input_prefix}_metadata_slurm{magnification}.csv", index=False)
     print(df_slurm)
 
     if mode == "generate_metadata":
@@ -256,7 +265,7 @@ def main():
                         # print("Elapsed time: ", elapsed_time)
         else:  # debugging!! ,
             remove_white_areas_bool = False  # This should be turned to TRUE if the images are actually WSIs but without header information
-            os.makedirs(f"{data_dir}/tiles_metadata_{patch_size}", exist_ok=True)
+            os.makedirs(f"{data_dir}/tiles_metadata_{patch_size}{magnification}", exist_ok=True)
             with tqdm(total=len(df)) as pbar:
                 print(df_slurm)
                 for idx, row in df_slurm.iterrows():
@@ -336,6 +345,7 @@ def main():
                         base_mpp=image_base_mpp,
                         remove_white_areas_bool=remove_white_areas_bool,
                         allow_tile_overlap=allow_tile_overlap,
+                        magnification=magnification,
                     )
                     num_tiles.append(len(grid))
                     # end_time = time.time()
@@ -346,7 +356,7 @@ def main():
             print(len(num_tiles))
             df_slurm["num_tiles"] = num_tiles
             df_slurm.to_csv(
-                f"{data_dir}/{input_prefix}_metadata_slurm.csv", index=False
+                f"{data_dir}/{input_prefix}_metadata_slurm{magnification}.csv", index=False
             )
 
     # else:
