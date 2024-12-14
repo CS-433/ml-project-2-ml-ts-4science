@@ -98,8 +98,6 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
         # Training
         model.train()
         train_loss = 0.0
-        num_batches = len(train_loader)
-        print(f"Number of batches: {num_batches}")
         for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
