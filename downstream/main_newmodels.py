@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore")
 # Argparser to set model configuration
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type=str, default="BACH")
-parser.add_argument("--augmentation", type=str, default="5")
+parser.add_argument("--augmentation", type=str, default="20")
 parser.add_argument("--pooling", type=str, default="GatedAttention", choices=["GatedAttention", "mean"], help="Pooling method")
 parser.add_argument("--nlayers_classifier", type=int, default=1, help="Number of layers in classifier head")
 parser.add_argument("--dropout_ratio", type=float, default=0.4, help="Dropout ratio in classifier head")
@@ -98,6 +98,8 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
         # Training
         model.train()
         train_loss = 0.0
+        num_batches = len(train_loader)
+        print(f"Number of batches: {num_batches}")
         for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
@@ -106,9 +108,9 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
             loss = criterion(preds, batch.y)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item() * batch.x.size(0)
+            train_loss += loss.item() #* batch.x.size(0)
 
-        train_loss /= len(train_loader.dataset)
+        # train_loss /= len(train_loader.dataset)
 
         # Validation
         model.eval()
@@ -118,12 +120,12 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
                 batch = batch.to(device)
                 preds, _ = model(batch)
                 loss = criterion(preds, batch.y)
-                val_loss += loss.item() * batch.x.size(0)
+                val_loss += loss.item() #* batch.x.size(0)
 
                 # Actualizar métricas
                 metric_f1.update(preds.softmax(dim=-1), batch.y)
 
-        val_loss /= len(val_loader.dataset)
+        # val_loss /= len(val_loader.dataset)
         val_f1 = metric_f1.compute().item()
         metric_f1.reset()
 
@@ -162,9 +164,9 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
         "val_loss": history["val_loss"],
         "val_f1": history["val_f1"]
     })
-    path_dataset_result = "results/" + dataset_name + "/"
+    path_dataset_result = "results/" + dataset_name + "/" + f"{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}/"
     os.makedirs(path_dataset_result, exist_ok=True)
-    fold_output_file = f"results/" + dataset_name + "/" + f"{dataset_name}_{augmentation}x_fold{fold+1}.csv"
+    fold_output_file = path_dataset_result + f"{dataset_name}_{augmentation}x_fold{fold+1}.csv"
     fold_history_df.to_csv(fold_output_file, index=False)
     # Create results directory if it does not exist
     print(f"Metrics for fold {fold+1} saved in {fold_output_file}")
