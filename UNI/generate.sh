@@ -12,17 +12,19 @@
 # SBATCH --gres=gpu:2  # Solicita 2 GPUs por nodo
 
 
-DATASET="BRACS"     # TCGA, GTEx
-NUM_SUBJOBS=71     # TCGA: 184, GTEx: 397, BACH: 6, BRACS: 71
-MAX_JOB_NUMBER=1135 #TCGA: 2942 #GTEx: 6338, BACH: 100, BRACS: 1134
+DATASET="BreakHis"     # TCGA, GTEx
+NUM_SUBJOBS=32     # TCGA: 184, GTEx: 397, BACH: 6, BRACS: 71, BreakHis: 32
+MAX_JOB_NUMBER=499 #TCGA: 2942 #GTEx: 6338, BACH: 100, BRACS: 1135, BreakHis: 499
 
 # adapt to 2 gpus
 # BACH: 400/4 = 100, 4 jobs per node, 100/16=6, split over 16 array jobs
 # BRACS: ceil(4539/4) = 1135, 4 jobs per node, 1135/16=71, split over 16 array jobs
+# BreakHis: 1995/4 = 499, 4 jobs per node, 499/16=32, split over 16 array jobs
+
 
 DATA_DIR="/mnt/lts4-pathofm/scratch/data/ml4science/$DATASET"
 
-MAGNIFICATION="_10x" # _20x, _40x
+MAGNIFICATION="_40x" # _20x, _40x
 CSV_FILE="/mnt/lts4-pathofm/scratch/data/ml4science/$DATASET/images_metadata_slurm$MAGNIFICATION.csv"
 
 TOTAL_ROWS=$(awk 'NR>1' ${CSV_FILE} | wc -l)
