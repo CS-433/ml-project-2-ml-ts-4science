@@ -4,6 +4,7 @@ import openslide
 import pandas as pd
 import numpy as np
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import os
 import json
 from typing import List, Tuple, Dict, Any, Literal
@@ -14,7 +15,7 @@ import time
 import yaml
 
 
-valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS"]
+valid_datasets = ["TCGA", "GTEx", "MHIST", "CRC100k", "PANDA", "BACH", "MIDOG", "BRACS", "BCNB", "BreakHis"]
 
 mpp_to_magnification = {
     0.25: "_40x",

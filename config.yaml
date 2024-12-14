@@ -1,6 +1,6 @@
-dataset: BRACS
+dataset: BCNB
 data_dir: /mnt/lts4-pathofm/scratch/data/ml4science/
-mpp: 0.25
+mpp: 2
 
 datasets:
   TCGA:
@@ -25,5 +25,11 @@ datasets:
     type: images
     id_column: Image Name
   MIDOG:
+    type: images
+    id_column: Image Name
+  BCNB:
+    type: images
+    id_column: Image Name
+  BreakHis:
     type: images
     id_column: Image Name

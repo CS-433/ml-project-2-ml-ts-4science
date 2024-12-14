@@ -21,7 +21,8 @@ MAX_PIXEL_DIFFERENCE = 0.2  # difference must be within 20% of image size
 base_mpps_dict = {
     "BACH": 0.42,
     "BRACS": 0.25,  # in microns per pixel (MPP)
-    "MIDOG": 0.25,  # TODO: check this value for the images from the scanners. We know which scanner was used for each image
+    "BCNB": 0.05,
+    "BreakHis": 0.25,
 }
 
 
