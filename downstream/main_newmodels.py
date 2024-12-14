@@ -3,12 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch_geometric.loader import DataLoader
 from torch.utils.data import Subset
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 import argparse
 import pandas as pd
 import os
 import warnings
 from collections import Counter
+import torchmetrics
+import numpy as np
 
 import models
 from dataset import EmbeddingsDataset
@@ -17,7 +19,7 @@ warnings.filterwarnings("ignore")
 
 # Argparser to set model configuration
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", type=str, default="BRACS")
+parser.add_argument("--dataset", type=str, default="BACH")
 parser.add_argument("--augmentation", type=str, default="5")
 parser.add_argument("--pooling", type=str, default="GatedAttention", choices=["GatedAttention", "mean"], help="Pooling method")
 parser.add_argument("--nlayers_classifier", type=int, default=1, help="Number of layers in classifier head")
@@ -46,151 +48,149 @@ print("Class distribution in the original dataset:")
 for class_label, count in class_counts.items():
     print(f"Class {class_label}: {count} samples")
 
-train_indices, temp_indices, train_labels, temp_labels = train_test_split(
-    indices, labels_list, test_size=0.3, stratify=labels_list, random_state=42
-)
-val_indices, test_indices, val_labels, test_labels = train_test_split(
-    temp_indices, temp_labels, test_size=0.5, stratify=temp_labels, random_state=42
-)
+# Initialize StratifiedKFold
+kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-train_dataset = Subset(dataset, train_indices)
-val_dataset = Subset(dataset, val_indices)
-test_dataset = Subset(dataset, test_indices)
+fold_results = []
 
-print(f"Number of classes in train set: {len(set(train_labels))}")
-print(f"Number of classes in val set: {len(set(val_labels))}")
+for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_list)):
+    print(f"Fold {fold+1}")
+    
+    train_dataset = Subset(dataset, train_indices)
+    val_dataset = Subset(dataset, val_indices)
+    
+    batch_dim = 64
+    train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
+    
+    input_dim = 1024
+    n_classes = dataset.num_labels
 
-batch_dim = 64
-train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
+    # Initialize model from the integrated MIL_model
+    model = models.MIL_model(
+        input_dim=input_dim,
+        n_classes=n_classes,
+        nlayers_classifier=args.nlayers_classifier,
+        dropout_ratio=args.dropout_ratio,
+        pooling=args.pooling,
+        attention_hidden_dim=128
+    ).to(device)
 
-input_dim = 1024
-n_classes = dataset.num_labels
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-# Initialize model from the integrated MIL_model
-model = models.MIL_model(
-    input_dim=input_dim,
-    n_classes=n_classes,
-    nlayers_classifier=args.nlayers_classifier,
-    dropout_ratio=args.dropout_ratio,
-    pooling=args.pooling,
-    attention_hidden_dim=128
-).to(device)
+    # Inicializar métricas de torchmetrics
+    metric_f1 = torchmetrics.F1Score(task='multiclass', num_classes=n_classes, average='weighted').to(device)
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    # Configurar early stopping basado en val_f1
+    best_val_f1 = 0.0
+    patience = 20
+    counter = 0
+    history = {
+        "epoch": [],
+        "train_loss": [],
+        "val_loss": [],
+        "val_acc": [],
+        "val_f1": []
+    }
 
-best_val_loss = float("inf")
-history = {
-    "epoch": [],
-    "train_loss": [],
-    "val_loss": [],
-    "val_acc": [],
-    "val_f1": []
-}
-
-for epoch in range(args.epochs):
-    # Training
-    model.train()
-    train_loss = 0.0
-    for batch in train_loader:
-        batch = batch.to(device)
-        optimizer.zero_grad()
-        # model returns pred_graphs, x_graphs
-        preds, _ = model(batch)
-        loss = criterion(preds, batch.y)
-        loss.backward()
-        optimizer.step()
-        train_loss += loss.item() * batch.x.size(0)
-
-    train_loss /= len(train_loader.dataset)
-
-    # Validation
-    model.eval()
-    val_loss = 0.0
-    val_preds_all = []
-    val_targets_all = []
-    with torch.no_grad():
-        for batch in val_loader:
+    for epoch in range(args.epochs):
+        # Training
+        model.train()
+        train_loss = 0.0
+        for batch in train_loader:
             batch = batch.to(device)
+            optimizer.zero_grad()
+            # model returns pred_graphs, x_graphs
             preds, _ = model(batch)
             loss = criterion(preds, batch.y)
-            val_loss += loss.item() * batch.x.size(0)
-            val_preds_all.append(torch.argmax(preds, dim=1).cpu())
-            val_targets_all.append(batch.y.cpu())
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item() * batch.x.size(0)
 
-    val_loss /= len(val_loader.dataset)
-    val_preds_all = torch.cat(val_preds_all)
-    val_targets_all = torch.cat(val_targets_all)
-    val_acc = (val_preds_all == val_targets_all).float().mean().item()
-    val_f1 = models.compute_f1(val_preds_all, val_targets_all)
+        train_loss /= len(train_loader.dataset)
 
-    # Check if best model
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        best_model_state = {
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "epoch": epoch
-        }
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for batch in val_loader:
+                batch = batch.to(device)
+                preds, _ = model(batch)
+                loss = criterion(preds, batch.y)
+                val_loss += loss.item() * batch.x.size(0)
 
-    print(f"Epoch [{epoch+1}/{args.epochs}]: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
+                # Actualizar métricas
+                metric_f1.update(preds.softmax(dim=-1), batch.y)
 
-    history["epoch"].append(epoch+1)
-    history["train_loss"].append(train_loss)
-    history["val_loss"].append(val_loss)
-    history["val_acc"].append(val_acc)
-    history["val_f1"].append(val_f1)
+        val_loss /= len(val_loader.dataset)
+        val_f1 = metric_f1.compute().item()
+        metric_f1.reset()
 
-# Load best model
-model.load_state_dict(best_model_state["model_state_dict"])
+        # Comprobar si es el mejor modelo basado en val_f1
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            best_model_state = model.state_dict()
+            counter = 0
+        else:
+            counter += 1
+            if counter >= patience:
+                print(f"Early stopping in epoch: {epoch+1}")
+                break
 
-# Test
-model.eval()
-test_preds_all = []
-test_targets_all = []
-with torch.no_grad():
-    test_loss = 0.0
-    for batch in test_loader:
-        batch = batch.to(device)
-        preds, _ = model(batch)
-        loss = criterion(preds, batch.y)
-        test_loss += loss.item() * batch.x.size(0)
-        test_preds_all.append(torch.argmax(preds, dim=1).cpu())
-        test_targets_all.append(batch.y.cpu())
+        print(f"Epoch [{epoch+1}/{args.epochs}]: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val F1: {val_f1:.4f}")
 
-test_loss /= len(test_loader.dataset)
-test_preds_all = torch.cat(test_preds_all)
-test_targets_all = torch.cat(test_targets_all)
-test_acc = (test_preds_all == test_targets_all).float().mean().item()
-test_f1 = models.compute_f1(test_preds_all, test_targets_all)
+        history["epoch"].append(epoch+1)
+        history["train_loss"].append(train_loss)
+        history["val_loss"].append(val_loss)
+        history["val_f1"].append(val_f1)
 
-print(f"Test Results: Loss: {test_loss:.4f}, Accuracy: {test_acc:.4f}, F1: {test_f1:.4f}")
+    # Load best model for this fold
+    model.load_state_dict(best_model_state)
 
-# Save metrics to CSV in results/
-os.makedirs("results", exist_ok=True)
-results_df = pd.DataFrame({
-    "epoch": history["epoch"],
-    "train_loss": history["train_loss"],
-    "val_loss": history["val_loss"],
-    "val_acc": history["val_acc"],
-    "val_f1": history["val_f1"]
+    # Save metrics for this fold
+    fold_results.append({
+        "fold": fold + 1,
+        "val_loss": val_loss,
+        "val_f1": best_val_f1
+    })
+
+    # Save metrics to CSV for this fold
+    fold_history_df = pd.DataFrame({
+        "epoch": history["epoch"],
+        "train_loss": history["train_loss"],
+        "val_loss": history["val_loss"],
+        "val_f1": history["val_f1"]
+    })
+    path_dataset_result = "results/" + dataset_name + "/"
+    os.makedirs(path_dataset_result, exist_ok=True)
+    fold_output_file = f"results/" + dataset_name + "/" + f"{dataset_name}_{augmentation}x_fold{fold+1}.csv"
+    fold_history_df.to_csv(fold_output_file, index=False)
+    # Create results directory if it does not exist
+    print(f"Metrics for fold {fold+1} saved in {fold_output_file}")
+
+val_loss_list = [r["val_loss"] for r in fold_results]
+val_f1_list = [r["val_f1"] for r in fold_results]
+
+avg_val_loss = np.mean(val_loss_list)
+std_val_loss = np.std(val_loss_list, ddof=1)
+avg_val_f1 = np.mean(val_f1_list)
+std_val_f1 = np.std(val_f1_list, ddof=1)
+
+print(f"Average Validation Results over {kf.get_n_splits()} folds:")
+print(f"Loss: {avg_val_loss:.4f} ± {std_val_loss:.4f}")
+print(f"F1 Score: {avg_val_f1:.4f} ± {std_val_f1:.4f}")
+
+# Save all fold results to CSV
+fold_results_df = pd.DataFrame({
+    "fold": [r["fold"] for r in fold_results],
+    "val_loss": val_loss_list,
+    "val_f1": val_f1_list
 })
 
-# Append final test results as a single row at the end
-test_summary = pd.DataFrame({
-    "epoch": ["final_test"],
-    "train_loss": [None],
-    "val_loss": [None],
-    "val_acc": [None],
-    "val_f1": [None],
-    "test_loss": [test_loss],
-    "test_acc": [test_acc],
-    "test_f1": [test_f1]
-})
-results_df = pd.concat([results_df, test_summary], ignore_index=True)
+fold_results_df.loc["mean"] = ["mean", avg_val_loss, avg_val_f1]
+fold_results_df.loc["std"] = ["std", std_val_loss, std_val_f1]
 
-output_file = f"results/{dataset_name}_{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}.csv"
-results_df.to_csv(output_file, index=False)
-print(f"Merged metrics saved in {output_file}")
+output_file = f"results/{dataset_name}_{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}_kfold.csv"
+fold_results_df.to_csv(output_file, index=False)
+print(f"Fold metrics saved in {output_file}")
