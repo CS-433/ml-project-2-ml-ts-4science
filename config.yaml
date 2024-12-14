@@ -1,5 +1,5 @@
-dataset: MIDOG
-data_dir: /home/carlos/ml-project-2-ml-ts-4science/data
+dataset: BCNB
+data_dir: /mnt/lts4-pathofm/scratch/data/ml4science/
 mpp: 2
 
 datasets:
@@ -25,5 +25,11 @@ datasets:
     type: images
     id_column: Image Name
   MIDOG:
+    type: images
+    id_column: Image Name
+  BCNB:
+    type: images
+    id_column: Image Name
+  BreakHis:
     type: images
     id_column: Image Name
