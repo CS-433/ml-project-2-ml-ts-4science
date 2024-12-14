@@ -2,6 +2,7 @@ import torch.nn.functional as F
 from torch import nn
 import torch
 import pytorch_lightning as pl
+from torch_geometric.nn.pool import global_mean_pool
 
 
 class LinearModel(pl.LightningModule):
@@ -332,6 +333,83 @@ class GatedAttention(nn.Module):
         x_graphs = torch.cat(list_x_graphs, dim=0)
         Att = torch.cat(list_att, dim=0)
         return Att, x_graphs
+    
+# ---
+
+class MIL_model(nn.Module):
+    """
+    MIL_model can perform either Gated Attention pooling or Mean pooling,
+    followed by a linear or MLP-based classifier head. The number of classifier
+    layers is controlled by nlayers_classifier. If nlayers_classifier=1, it 
+    performs a direct linear classification (no hidden layers).
+    """
+    def __init__(
+        self,
+        input_dim: int,         # input features dimension
+        n_classes: int,         # number of classes
+        nlayers_classifier: int = 1, # number of layers in final classifier head
+        dropout_ratio: float = 0.,   # dropout in the classifier head
+        pooling: str = 'GatedAttention',
+        attention_hidden_dim: int = 128
+    ):
+        super(MIL_model, self).__init__()
+        self.input_dim = input_dim
+        self.n_classes = n_classes
+        self.nlayers_classifier = nlayers_classifier
+        assert self.nlayers_classifier > 0
+
+        self.dropout_ratio = dropout_ratio
+        self.pooling = pooling
+        assert pooling in ['mean', 'GatedAttention']
+        self.attention_hidden_dim = attention_hidden_dim
+
+        # MIL pooling
+        if self.pooling == 'GatedAttention':
+            self.mil_operator = GatedAttention(input_dim, attention_hidden_dim)
+
+        # Classifier head
+        self.classifier_layers = nn.ModuleList()
+        self.classifier_normalization_layers = nn.ModuleList()
+
+        # If nlayers_classifier > 1, we have MLP style:
+        # (input_dim -> input_dim) x (nlayers_classifier-1) times + final (input_dim -> n_classes)
+        # If nlayers_classifier = 1, we directly have (input_dim -> n_classes)
+        for _ in range(nlayers_classifier - 1):
+            self.classifier_layers.append(nn.Linear(input_dim, input_dim))
+            self.classifier_normalization_layers.append(nn.BatchNorm1d(input_dim))
+        self.classifier_layers.append(nn.Linear(input_dim, n_classes))
+
+    def reset_parameters(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                m.reset_parameters()
+            elif isinstance(m, nn.BatchNorm1d):
+                m.reset_parameters()
+
+    def compute_probabilities(self, x_graphs):
+        for i in range(self.nlayers_classifier - 1):
+            x_graphs = self.classifier_layers[i](x_graphs)
+            x_graphs = self.classifier_normalization_layers[i](x_graphs)
+            x_graphs = F.relu(x_graphs)
+
+        x_graphs = F.dropout(
+            self.classifier_layers[-1](x_graphs),
+            p=self.dropout_ratio, training=self.training
+        )
+        pred_graphs = F.softmax(x_graphs, dim=1)
+        return pred_graphs
+
+    def forward(self, data):
+        # Pooling
+        if self.pooling == 'GatedAttention':
+            _, x_graphs = self.mil_operator(data)
+        elif self.pooling == 'mean':
+            x_graphs = global_mean_pool(data.x, data.batch)
+
+        # Classification
+        pred_graphs = self.compute_probabilities(x_graphs)
+        return pred_graphs, x_graphs
+
 
 
 def compute_f1(all_preds, all_targets):

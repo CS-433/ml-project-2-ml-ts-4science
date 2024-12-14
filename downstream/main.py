@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore")
 # Define argparser for dataset
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type=str, default="BRACS")
-parser.add_argument("--augmentation", type=str, default=5)
+parser.add_argument("--augmentation", type=str, default="5")
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
