@@ -17,7 +17,7 @@ def parse_arguments():
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="/scratch/izar/dlopez/ml4science/data/",
+        default="/mnt/lts4-pathofm/scratch/data/ml4science/",
         help="Base directory for data.",
     )
     parser.add_argument(
@@ -116,33 +116,53 @@ def draw_tiles_on_image(
 
 def rectangles_overlap(
     rect1: Tuple[int, int, int, int], rect2: Tuple[int, int, int, int]
-) -> bool:
+) -> float:
     """
-    Check if two rectangles overlap.
+    Calculate the percentage of overlap between two rectangles.
 
     Args:
         rect1: Coordinates of the first rectangle (x_min, y_min, x_max, y_max).
         rect2: Coordinates of the second rectangle.
 
     Returns:
-        True if rectangles overlap, False otherwise.
+        The percentage of overlap between the two rectangles (0-100).
     """
     x1_min, y1_min, x1_max, y1_max = rect1
     x2_min, y2_min, x2_max, y2_max = rect2
-    return not (x1_max <= x2_min or x2_max <= x1_min or y1_max <= y2_min or y2_max <= y1_min)
+
+    # Calculate intersection area
+    inter_x_min = max(x1_min, x2_min)
+    inter_y_min = max(y1_min, y2_min)
+    inter_x_max = min(x1_max, x2_max)
+    inter_y_max = min(y1_max, y2_max)
+
+    if inter_x_max > inter_x_min and inter_y_max > inter_y_min:
+        inter_area = (inter_x_max - inter_x_min) * (inter_y_max - inter_y_min)
+    else:
+        inter_area = 0
+
+    # Calculate union area
+    area1 = (x1_max - x1_min) * (y1_max - y1_min)
+    area2 = (x2_max - x2_min) * (y2_max - y2_min)
+    union_area = area1 + area2 - inter_area
+
+    # Calculate overlap percentage
+    if union_area > 0:
+        return (inter_area / union_area) * 100
+    return 0.0
 
 def check_overlaps(
     tiles: List[Tuple[int, int]], tile_size: int
-) -> List[Tuple[int, int]]:
+) -> List[Tuple[int, int, float]]:
     """
-    Check for overlapping tiles.
+    Check for overlapping tiles and calculate overlap percentages.
 
     Args:
         tiles: List of tile coordinates.
         tile_size: Size of each tile.
 
     Returns:
-        List of tuples indicating indices of overlapping tiles.
+        List of tuples indicating indices of overlapping tiles and their overlap percentage.
     """
     overlaps = []
     rectangles = []
@@ -153,9 +173,11 @@ def check_overlaps(
         idx1, rect1 = rectangles[i]
         for j in range(i + 1, len(rectangles)):
             idx2, rect2 = rectangles[j]
-            if rectangles_overlap(rect1, rect2):
-                overlaps.append((idx1, idx2))
+            overlap_percentage = rectangles_overlap(rect1, rect2)
+            if overlap_percentage > 0:
+                overlaps.append((idx1, idx2, overlap_percentage))
     return overlaps
+
 
 def process_image(
     image_name: str,
@@ -214,8 +236,8 @@ def process_image(
             logger.debug(f"Tile {idx}: ({x}, {y})")
         if overlaps:
             logger.info("Overlaps detected between tiles:")
-            for i, j in overlaps:
-                logger.info(f"Tiles {i} and {j} overlap")
+            for i, j, percentage in overlaps:
+                logger.info(f"Tiles {i} and {j} overlap by {percentage:.2f}%")
         else:
             logger.info("No overlaps detected between tiles")
 
