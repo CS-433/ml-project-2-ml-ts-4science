@@ -24,7 +24,7 @@ parser.add_argument("--augmentation", type=str, default="20")
 parser.add_argument("--pooling", type=str, default="GatedAttention", choices=["GatedAttention", "mean"], help="Pooling method")
 parser.add_argument("--nlayers_classifier", type=int, default=1, help="Number of layers in classifier head")
 parser.add_argument("--dropout_ratio", type=float, default=0.4, help="Dropout ratio in classifier head")
-parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
+parser.add_argument("--epochs", type=int, default=200, help="Number of training epochs")
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,6 +38,7 @@ augmentation = args.augmentation
 path = "/mnt/lts4-pathofm/scratch/data/ml4science/" + dataset_name + "/"
 data_path = path + "embeddings/embeddings_uni_" + augmentation + "x/"
 label_path = path + "labels.csv"
+batch_dim = 64
 
 # Create dataset and splits
 dataset = EmbeddingsDataset(data_path, label_path, transform=True)
@@ -57,6 +58,8 @@ train_indices, test_indices = train_test_split(
 
 train_dataset = Subset(dataset, train_indices)
 test_dataset = Subset(dataset, test_indices)
+test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
+
 
 train_labels = [labels_list[i] for i in train_indices]
 train_dataset_indices = list(range(len(train_dataset)))
@@ -74,7 +77,6 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
     val_dataset_fold = Subset(train_dataset, val_fold_indices)
     
     
-    batch_dim = 64
     train_loader = DataLoader(train_dataset_fold, batch_size=batch_dim, shuffle=True)
     val_loader = DataLoader(val_dataset_fold, batch_size=batch_dim, shuffle=False)
     
@@ -213,3 +215,35 @@ fold_results_df.loc["std"] = ["std", std_val_loss, std_val_f1]
 output_file = f"results/{dataset_name}_{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}_kfold.csv"
 fold_results_df.to_csv(output_file, index=False)
 print(f"Fold metrics saved in {output_file}")
+
+
+
+# Load best model
+model.load_state_dict(best_model_state)
+
+# Evaluate on test data
+model.eval()
+test_loss = 0.0
+num_samples_batch = 0
+with torch.no_grad():
+    for batch in test_loader:
+        batch = batch.to(device)
+        preds, _ = model(batch)
+        loss = criterion(preds, batch.y)
+        test_loss += loss.item()
+        metric_f1.update(preds.softmax(dim=-1), batch.y)
+        num_samples_batch += batch.ptr.size(0) - 1
+test_loss /= num_samples_batch
+test_f1 = metric_f1.compute().item()
+metric_f1.reset()
+
+print(f"Test Results: Loss: {test_loss:.4f}, F1 Score: {test_f1:.4f}")
+
+# Save test results
+test_results_df = pd.DataFrame({
+    "test_loss": [test_loss],
+    "test_f1": [test_f1]
+})
+test_output_file = path_dataset_result + f"{dataset_name}_{augmentation}x_test_results.csv"
+test_results_df.to_csv(test_output_file, index=False)
+print(f"Test metrics saved in {test_output_file}")
