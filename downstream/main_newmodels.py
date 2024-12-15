@@ -48,20 +48,35 @@ print("Class distribution in the original dataset:")
 for class_label, count in class_counts.items():
     print(f"Class {class_label}: {count} samples")
 
+train_indices, test_indices = train_test_split(
+    indices,
+    test_size=0.2,
+    stratify=labels_list,
+    random_state=42
+)
+
+train_dataset = Subset(dataset, train_indices)
+test_dataset = Subset(dataset, test_indices)
+
+train_labels = [labels_list[i] for i in train_indices]
+train_dataset_indices = list(range(len(train_dataset)))
+
+
 # Initialize StratifiedKFold
 kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 fold_results = []
 
-for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_list)):
+for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dataset_indices, train_labels)):
     print(f"Fold {fold+1}")
     
-    train_dataset = Subset(dataset, train_indices)
-    val_dataset = Subset(dataset, val_indices)
+    train_dataset_fold = Subset(train_dataset, train_fold_indices)
+    val_dataset_fold = Subset(train_dataset, val_fold_indices)
+    
     
     batch_dim = 64
-    train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
+    train_loader = DataLoader(train_dataset_fold, batch_size=batch_dim, shuffle=True)
+    val_loader = DataLoader(val_dataset_fold, batch_size=batch_dim, shuffle=False)
     
     input_dim = 1024
     n_classes = dataset.num_labels
@@ -76,7 +91,7 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
         attention_hidden_dim=128
     ).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Inicializar métricas de torchmetrics
@@ -98,32 +113,36 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
         # Training
         model.train()
         train_loss = 0.0
+        num_samples_batch = 0 
         for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
             # model returns pred_graphs, x_graphs
             preds, _ = model(batch)
             loss = criterion(preds, batch.y)
-            loss.backward()
+            loss.backward() 
             optimizer.step()
-            train_loss += loss.item() #* batch.x.size(0)
+            train_loss += loss.item() 
+            num_samples_batch += batch.ptr.size(0) - 1
 
-        # train_loss /= len(train_loader.dataset)
+        train_loss /= num_samples_batch
 
         # Validation
         model.eval()
         val_loss = 0.0
+        num_samples_batch = 0
         with torch.no_grad():
             for batch in val_loader:
                 batch = batch.to(device)
                 preds, _ = model(batch)
                 loss = criterion(preds, batch.y)
-                val_loss += loss.item() #* batch.x.size(0)
+                val_loss += loss.item() 
 
                 # Actualizar métricas
                 metric_f1.update(preds.softmax(dim=-1), batch.y)
+                num_samples_batch += batch.ptr.size(0) - 1
 
-        # val_loss /= len(val_loader.dataset)
+        val_loss /= num_samples_batch
         val_f1 = metric_f1.compute().item()
         metric_f1.reset()
 
@@ -165,7 +184,7 @@ for fold, (train_indices, val_indices) in enumerate(kf.split(indices, labels_lis
     path_dataset_result = "results/" + dataset_name + "/" + f"{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}/"
     os.makedirs(path_dataset_result, exist_ok=True)
     fold_output_file = path_dataset_result + f"{dataset_name}_{augmentation}x_fold{fold+1}.csv"
-    fold_history_df.to_csv(fold_output_file, index=False)
+    # fold_history_df.to_csv(fold_output_file, index=False)
     # Create results directory if it does not exist
     print(f"Metrics for fold {fold+1} saved in {fold_output_file}")
 
@@ -192,5 +211,5 @@ fold_results_df.loc["mean"] = ["mean", avg_val_loss, avg_val_f1]
 fold_results_df.loc["std"] = ["std", std_val_loss, std_val_f1]
 
 output_file = f"results/{dataset_name}_{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}_kfold.csv"
-fold_results_df.to_csv(output_file, index=False)
+# fold_results_df.to_csv(output_file, index=False)
 print(f"Fold metrics saved in {output_file}")
