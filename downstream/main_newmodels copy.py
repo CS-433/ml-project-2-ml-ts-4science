@@ -70,8 +70,8 @@ fold_results = []
 for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dataset_indices, train_labels)):
     print(f"Fold {fold+1}")
     
-    train_dataset_fold = Subset(train_dataset_fold, train_fold_indices)
-    val_dataset_fold = Subset(train_dataset_fold, val_fold_indices)
+    train_dataset_fold = Subset(train_dataset, train_fold_indices)
+    val_dataset_fold = Subset(train_dataset, val_fold_indices)
     
     
     batch_dim = 64
@@ -91,7 +91,7 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
         attention_hidden_dim=128
     ).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Inicializar métricas de torchmetrics
@@ -113,7 +113,7 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
         # Training
         model.train()
         train_loss = 0.0
-        num_batches = 0
+        num_samples_batch = 0 
         for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
@@ -123,13 +123,14 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
             loss.backward() 
             optimizer.step()
             train_loss += loss.item() 
-            num_batches += 1
+            num_samples_batch += batch.ptr.size(0) - 1
 
-        # train_loss /= num_batches
+        train_loss /= num_samples_batch
 
         # Validation
         model.eval()
         val_loss = 0.0
+        num_samples_batch = 0
         with torch.no_grad():
             for batch in val_loader:
                 batch = batch.to(device)
@@ -139,8 +140,9 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
 
                 # Actualizar métricas
                 metric_f1.update(preds.softmax(dim=-1), batch.y)
+                num_samples_batch += batch.ptr.size(0) - 1
 
-        # val_loss /= len(val_loader.dataset)
+        val_loss /= num_samples_batch
         val_f1 = metric_f1.compute().item()
         metric_f1.reset()
 
