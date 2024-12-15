@@ -24,7 +24,7 @@ parser.add_argument("--augmentation", type=str, default="20")
 parser.add_argument("--pooling", type=str, default="GatedAttention", choices=["GatedAttention", "mean"], help="Pooling method")
 parser.add_argument("--nlayers_classifier", type=int, default=1, help="Number of layers in classifier head")
 parser.add_argument("--dropout_ratio", type=float, default=0.4, help="Dropout ratio in classifier head")
-parser.add_argument("--epochs", type=int, default=200, help="Number of training epochs")
+parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -184,7 +184,7 @@ for fold, (train_fold_indices, val_fold_indices) in enumerate(kf.split(train_dat
     path_dataset_result = "results/" + dataset_name + "/" + f"{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}/"
     os.makedirs(path_dataset_result, exist_ok=True)
     fold_output_file = path_dataset_result + f"{dataset_name}_{augmentation}x_fold{fold+1}.csv"
-    # fold_history_df.to_csv(fold_output_file, index=False)
+    fold_history_df.to_csv(fold_output_file, index=False)
     # Create results directory if it does not exist
     print(f"Metrics for fold {fold+1} saved in {fold_output_file}")
 
@@ -211,5 +211,5 @@ fold_results_df.loc["mean"] = ["mean", avg_val_loss, avg_val_f1]
 fold_results_df.loc["std"] = ["std", std_val_loss, std_val_f1]
 
 output_file = f"results/{dataset_name}_{augmentation}x_{args.pooling}_{args.nlayers_classifier}layers_dropout{args.dropout_ratio}_kfold.csv"
-# fold_results_df.to_csv(output_file, index=False)
+fold_results_df.to_csv(output_file, index=False)
 print(f"Fold metrics saved in {output_file}")
