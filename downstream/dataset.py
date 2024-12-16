@@ -85,7 +85,8 @@ class EmbeddingsDataset(Dataset):
         norm = torch.norm(tensor, p=p)
         return tensor / (norm + eps)
 
-    def create_dataset(self, data_path, label_path):
+    @staticmethod
+    def create_dataset(data_path, label_path):
         """
         Creates the dataset by loading embeddings, coordinates, labels, and file names.
 
