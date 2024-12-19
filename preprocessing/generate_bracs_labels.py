@@ -2,6 +2,7 @@
 import os
 import csv
 
+
 def main():
     # Base BRACS directory
     bracs_dir = "/scratch/izar/dlopez/ml4science/data/BRACS"
@@ -12,7 +13,7 @@ def main():
     image_files = os.listdir(images_dir)
 
     # Open the CSV file for writing
-    with open(output_file, mode='w', newline='') as csvfile:
+    with open(output_file, mode="w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         # Write header
         writer.writerow(["file_name", "class"])
@@ -30,6 +31,7 @@ def main():
 
                     # Write line: file_name,class
                     writer.writerow([filename, image_class])
+
 
 if __name__ == "__main__":
     main()

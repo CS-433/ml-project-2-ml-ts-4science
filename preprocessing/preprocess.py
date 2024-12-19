@@ -25,6 +25,7 @@ base_mpps_dict = {
     "BreakHis": 0.25,
 }
 
+
 def make_sample_grid(
     image,
     patch_size=224,
@@ -46,7 +47,9 @@ def make_sample_grid(
             f"Image size is too small for patch size {patch_size} and mpp {mpp}"
         )
     img = image[
-        :: int(np.ceil(image.shape[0] / rows)), :: int(np.ceil(image.shape[1] / cols)), :
+        :: int(np.ceil(image.shape[0] / rows)),
+        :: int(np.ceil(image.shape[1] / cols)),
+        :,
     ]
     img = np.ones((img.shape[0], img.shape[1]))
 
@@ -61,11 +64,13 @@ def make_sample_grid(
 
     return grid
 
+
 def add_subfolder(base_dir: str, subfolder_name: str) -> None:
     subdirs = [f.path for f in os.scandir(base_dir) if f.is_dir()]
     for subdir in subdirs:
         tiles_metadata_path = os.path.join(subdir, subfolder_name)
         os.makedirs(tiles_metadata_path, exist_ok=True)
+
 
 def save_metadata_to_file(
     data_dir: str,
@@ -80,7 +85,9 @@ def save_metadata_to_file(
     magnification: str = "",
 ) -> None:
     if dataset in valid_datasets:
-        json_file = f"{data_dir}/tiles_metadata_{patch_size}{magnification}/{slide_id}.json"
+        json_file = (
+            f"{data_dir}/tiles_metadata_{patch_size}{magnification}/{slide_id}.json"
+        )
     else:
         raise ValueError(f"Unknown dataset {dataset}!")
     with open(json_file, "w") as f:
@@ -104,7 +111,6 @@ def main():
     with open("config.yaml", "r") as file:
         config = yaml.safe_load(file)
 
-
     ####### Configs ############################################
     dataset: Literal[tuple(valid_datasets)] = config["dataset"]
 
@@ -113,7 +119,7 @@ def main():
     if not image_base_mpp:
         print(f"Unknown dataset {dataset}")
         return
-    
+
     id_columns = {k: v["id_column"] for k, v in config["datasets"].items()}
     id_column = id_columns[dataset]
 
@@ -132,7 +138,10 @@ def main():
     df_slurm = df[[id_column]]
     df_slurm["slide_path"] = data_dir + "/images/" + df[id_column]
     df_slurm[f"metadata_path_{patch_size}"] = (
-        data_dir + f"/tiles_metadata_{patch_size}{magnification}/" + df[id_column] + ".json"
+        data_dir
+        + f"/tiles_metadata_{patch_size}{magnification}/"
+        + df[id_column]
+        + ".json"
     )
 
     print(df_slurm)
@@ -188,6 +197,7 @@ def main():
         df_slurm.to_csv(
             f"{data_dir}/images_metadata_slurm{magnification}.csv", index=False
         )
+
 
 if __name__ == "__main__":
     main()

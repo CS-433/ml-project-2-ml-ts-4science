@@ -11,6 +11,7 @@ from typing import List, Tuple
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+
 def parse_arguments():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Tile Visualization Script")
@@ -54,10 +55,12 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+
 def configure_logging(log_level: str):
     """Configure logging level."""
     level = logging.DEBUG if log_level == "DEBUG" else logging.INFO
     logger.setLevel(level)
+
 
 def get_augmentation_levels(dataset: str) -> List[str]:
     """Get augmentation levels based on the dataset."""
@@ -67,6 +70,7 @@ def get_augmentation_levels(dataset: str) -> List[str]:
         return ["5x", "10x", "20x", "40x"]
     else:
         raise ValueError(f"Unknown dataset {dataset}")
+
 
 def generate_distinct_colors(n: int) -> List[Tuple[int, int, int]]:
     """
@@ -79,12 +83,15 @@ def generate_distinct_colors(n: int) -> List[Tuple[int, int, int]]:
         List of colors in BGR format.
     """
     # Use a colormap to generate distinct colors
-    colormap = cv2.applyColorMap(np.linspace(0, 255, n).astype(np.uint8), cv2.COLORMAP_HSV)
+    colormap = cv2.applyColorMap(
+        np.linspace(0, 255, n).astype(np.uint8), cv2.COLORMAP_HSV
+    )
     colors = [tuple(int(c) for c in colormap[i][0]) for i in range(n)]
 
     # Shuffle colors to avoid similar colors being adjacent
     random.shuffle(colors)
     return colors
+
 
 def draw_tiles_on_image(
     image: np.ndarray,
@@ -113,6 +120,7 @@ def draw_tiles_on_image(
         color = colors[idx]
         cv2.rectangle(image, top_left, bottom_right, color, thickness)
     return image
+
 
 def rectangles_overlap(
     rect1: Tuple[int, int, int, int], rect2: Tuple[int, int, int, int]
@@ -150,6 +158,7 @@ def rectangles_overlap(
     if union_area > 0:
         return (inter_area / union_area) * 100
     return 0.0
+
 
 def check_overlaps(
     tiles: List[Tuple[int, int]], tile_size: int
@@ -249,6 +258,7 @@ def process_image(
         cv2.imwrite(output_image_path, image_with_tiles)
         logger.info(f"Saved image with tiles to {output_image_path}\n")
 
+
 def main():
     args = parse_arguments()
     configure_logging(args.log_level)
@@ -262,7 +272,9 @@ def main():
     else:
         # Get a list of images for processing
         images_list = [
-            f for f in os.listdir(images_dir) if os.path.isfile(os.path.join(images_dir, f))
+            f
+            for f in os.listdir(images_dir)
+            if os.path.isfile(os.path.join(images_dir, f))
         ][: args.num_images]
 
     try:
@@ -275,6 +287,7 @@ def main():
         process_image(
             image_name, images_dir, dataset_dir, augmentation_levels, args.output_dir
         )
+
 
 if __name__ == "__main__":
     main()

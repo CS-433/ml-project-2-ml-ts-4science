@@ -20,25 +20,31 @@ class EmbeddingsDataset(Dataset):
             transform (bool): Whether to apply transformations.
         """
         super().__init__()
-        self.embeddings, self.coordinates, self.labels, self.file_names = self.create_dataset(data_path, label_path)
+        self.embeddings, self.coordinates, self.labels, self.file_names = (
+            self.create_dataset(data_path, label_path)
+        )
         self.data_path = data_path
 
         # Build label mapping
         self.unique_labels = sorted(set(self.labels))
-        self.label_to_index = {label: idx for idx, label in enumerate(self.unique_labels)}
+        self.label_to_index = {
+            label: idx for idx, label in enumerate(self.unique_labels)
+        }
         self.index_to_label = {idx: label for label, idx in self.label_to_index.items()}
         # self.num_classes = len(self.unique_labels)
 
         # Convert labels to indices
         self.label_strings = self.labels.copy()  # Keep the original labels as strings
-        self.labels = torch.tensor([self.label_to_index[label] for label in self.labels])
+        self.labels = torch.tensor(
+            [self.label_to_index[label] for label in self.labels]
+        )
         self.num_labels = len(self.unique_labels)
 
     def __len__(self):
         """
         Returns the number of samples in the dataset.
         """
-        return len(self.embeddings)   # N
+        return len(self.embeddings)  # N
 
     def __getitem__(self, idx):
         """
@@ -63,9 +69,9 @@ class EmbeddingsDataset(Dataset):
         #     "file_name": self.file_names[idx]       # Shape: () - Single file name
         # }
 
-
-        sample = Data(x=torch.FloatTensor(self.embeddings[idx]),
-                        y=torch.tensor(label_idx))
+        sample = Data(
+            x=torch.FloatTensor(self.embeddings[idx]), y=torch.tensor(label_idx)
+        )
 
         return sample
 
@@ -104,28 +110,25 @@ class EmbeddingsDataset(Dataset):
 
         # Read labels.csv and create a mapping from file_name to class
         label_dict = {}
-        with open(label_path, 'r') as csvfile:
+        with open(label_path, "r") as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip header
             for row in reader:
                 file_name, class_label = row
                 label_dict[file_name.strip()] = class_label.strip()
 
-        npz_files = [f for f in os.listdir(data_path) if f.endswith('.npz')]
+        npz_files = [f for f in os.listdir(data_path) if f.endswith(".npz")]
         for file in npz_files:
             with np.load(os.path.join(data_path, file)) as data:
                 embeddings.append(torch.from_numpy(data["embeddings"]))
 
-
                 coordinates.append(torch.from_numpy(data["coordinates"]))
 
-            file_name = file.replace('.npz', '')
+            file_name = file.replace(".npz", "")
             class_label = label_dict.get(file_name)
             labels.append(class_label)
 
             file_names.append(file_name)
-
-        
 
         return embeddings, coordinates, labels, file_names
 
@@ -137,35 +140,39 @@ if __name__ == "__main__":
 
     # Create the dataset with the stacked tensors
     dataset = EmbeddingsDataset(data_path, label_path, transform=True)
-    
+
     # Test if the dataset works correctly
     print("First sample in the dataset:")
     print(dataset[0])
-    
+
     print(f"Total number of samples in the dataset: {len(dataset)}")
-    
-    print(f"Shape of the embedding vector in the first sample: {dataset[0].x.shape}")      # Should be (1024,)
-    
+
+    print(
+        f"Shape of the embedding vector in the first sample: {dataset[0].x.shape}"
+    )  # Should be (1024,)
+
     print("Embedding vector of the first sample:")
-    print(dataset[0].x)            # Print the embedding vector
-    
+    print(dataset[0].x)  # Print the embedding vector
+
     # print("Coordinate data of the first sample:")
     # print(dataset[0]["coordinate"])           # Print the coordinate data
-    
+
     # print(f"Label index of the first sample: {dataset[0]['label_idx']}")  # Print the label index
     # print(f"Label string of the first sample: {dataset[0]['label_str']}")  # Print the label string
-    print(f"One-hot label of the first sample: {dataset[0].y}")  # Print the one-hot label
+    print(
+        f"One-hot label of the first sample: {dataset[0].y}"
+    )  # Print the one-hot label
     # print(f"File name of the first sample: {dataset[0]['file_name']}")  # Print the file name
-    
+
     # Initialize the DataLoader
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
-    
+
     # Test if the DataLoader works correctly
     print("\nTesting DataLoader with a single batch:")
     for batch in dataloader:
 
-        print(f"Batch embedding shape: {batch.x.shape}")      # Should be (batch_size, 1024)
+        print(f"Batch embedding shape: {batch.x.shape}")  # Should be (batch_size, 1024)
         # print(f"Batch coordinate shape: {batch['coordinate'].shape}")    # Should match the coordinate dimensions
         # print(f"Batch label indices: {batch['label_idx']}")              # Print batch label indices
-        print(f"Batch labels: {batch.y}")         # Print batch one-hot labels
+        print(f"Batch labels: {batch.y}")  # Print batch one-hot labels
         # print(f"Batch file names: {batch['file_name']}")                 # Print batch file names
