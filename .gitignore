@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+generate_tables.py
 
 # Distribution / packaging
 .Python
