@@ -1,63 +1,180 @@
+### ML4Science: The Impact of Whole-Slide Image Resolution on Foundation Model Performance in Computational Pathology
 
-### Preprocessing
+This project focuses on extracting, analysing and using embeddings from histopathology datasets to train and evaluate models for various classification tasks. The ultimate goal is to apply deep learning methods, including ViT-based feature extraction, to facilitate tissue subtyping, pathology classification and related tasks, and to evaluate the relevance of the magnification level of the dataset in the classification results.
 
-40x: source
-20x: 0.42 or 0.5 mpp?
-10x: 1 mpp
-5x: 2 mpp
+---
 
-#### BACH
-https://iciar2018-challenge.grand-challenge.org/Dataset/
-- Microscopy images, NOT WSIs. Whole-slide images are high resolution images containing the entire sampled tissue. In this sense, microscopy images are just details of the whole-slide images.
-- 20x, 0.42 mpp
+### Directory Structure
 
-#### BRACS
-https://www.bracs.icar.cnr.it/details/
-- The Regions of Interest are provided in .png file format. The filename of a RoI includes the filename of the corresponding WSI as well as the subtype of RoI (e.g. BRACS_010_PB_32.png is the RoI number 32, extracted from the WSI named BRACS_010.svs and labeled as Pathological Benign). The resolution of each RoI is 40× and its dimension can easily exceed 4,000 by 4,000 pixels.
-- 40x, 0.25 mpp
+```
+CS-433-ml-project-2-ml-ts-4science
+├── preprocessing
+│   ├── preprocess.py               # Patch generation and metadata creation
+│   ├── generate_metadata.py        # Metadata generation for slide images
+│   └── generate_bracs_labels.py    # Label extraction for BRACS dataset
+├── analysis
+│   ├── tiles_analysis.py           # Analysis and visualization of extracted tiles
+│   └── output                      # Directory to store output analysis
+├── UNI
+│   ├── infere_uni.py               # Embedding inference using UNI model
+│   ├── download_uni.py             # Script to download UNI model
+│   ├── generate.sh                 # Batch script for embedding generation
+│   ├── generate_uni_embeddings.sh  # Batch script for distributed embedding inference
+│   └── infer_uni_regions.py        # Region-based inference for slides
+├── downstream
+│   ├── main.py                     # Training script for NN and k-NN methods
+│   ├── models.py                   # Implementation of various neural network models
+│   ├── analyzing_uni_embeddings.py # Analysis of extracted embeddings
+│   └── dataset.py                  # Dataset loader for embeddings and labels
+├── requirements.txt                # Python dependencies
+├── config.yaml                     # Configuration file for datasets and paths
+├── ML4Science.csv                  # Dataset details
+└── README.md                       # Project documentation
+```
 
-#### MIDOG
-https://imig.science/midog2021/download-dataset/
-- cropped regions of interest from 200 individual tumor cases
-- The assignment of the scanners to the files is as follows:
-    001.tiff to 050.tiff: Hamamatsu XR
-    051.tiff to 100.tiff: Hamamatsu S360 (with 0.5 numerical aperture)
-    101.tiff to 150.tiff: Aperio ScanScope CS2
-    151.tiff to 200.tiff: Leica GT450 (only images, no annotations provided for this scanner)
-- 0-100 0.23 mpp, 101-200 0.25 mpp
-- Should we crop based on the MIDOG.json file?
+---
 
-#### BCNB
-https://bupt-ai-cz.github.io/BCNB/
+### Key Components
 
-#### BreakHis
-https://web.inf.ufpr.br/vri/databases/breast-cancer-histopathological-database-breakhis/
+#### Preprocessing
 
-#### PanopTILs
-https://sites.google.com/view/panoptils
-The PanopTILs has a region-level task (i.e. prediction is a segmentation), and a cell-level task (for which you will need to add Cell-ViT on top of the UNI embeddings). You could look at this dataset last, after you process the other 4.
+1. **Patch Extraction:**
+   - The `preprocess.py` script generates image patches based on the specified resolution (MPP) and patch size. It creates metadata containing tile coordinates and details.
 
-#### MIDOG - discarded
+2. **Metadata Generation:**
+   - `generate_metadata.py` collects slide-level information and saves it as structured metadata.
 
-# MODEL TRAINNING
+3. **Label Mapping:**
+   - `generate_bracs_labels.py` extracts class labels from filenames for the BRACS dataset.
 
-After getting the embeddings for each dataset, start trainning with the following pipeline: 
+#### UNI-based Embedding Inference
 
-### Mean approach                
+1. **Embedding Generation:**
+   - Scripts like `infere_uni.py` and `infer_uni_regions.py` use the UNI model to compute embeddings for extracted tiles or regions.
 
-| MEAN-POOLING PATCH-LEVEL | -> |Linear clasifier / Multi Layer Perceptron|
+2. **Batch Processing:**
+   - Batch scripts (`generate.sh`, `generate_uni_embeddings.sh`) are provided for distributed inference across GPUs.
 
-### Attention Mechanism approach
+3. **Model Download:**
+   - `download_uni.py` downloads the required pretrained UNI model from HuggingFace Hub.
 
-| Attention $\sum_k p_k \text{patch}_k$ | -> |Linear clasifier / Multi Layer Perceptron|
+#### Analysis
 
-### Overview 
-- Attention should work better than Mean pooling approach.
-- Linear classifier, generally, works better when the task is easier.
-- MLP, generally, works better when the task is harder.
-- As UNI is trained with 20x, there should be a pump in the metrics of this resolution.
-  'easier' or 'harder' are related to distinguishability of tissue patterns.
+1. **Tile Analysis:**
+   - `tiles_analysis.py` visualizes tiles, checks overlaps, and validates tile extraction.
 
+2. **Embedding Analysis:**
+   - `analyzing_uni_embeddings.py` performs statistical analysis and dimensionality reduction on embeddings.
 
+#### Downstream Tasks
 
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/UDdkOEMs)
+1. **Classification Models:**
+   - The `main.py` script supports training neural networks and k-NN classifiers using embeddings.
+
+2. **Model Architectures:**
+   - `models.py` contains implementations for MLPs, linear models, and attention mechanisms.
+
+3. **Dataset Loader:**
+   - `dataset.py` provides a PyTorch-compatible loader for embedding-based datasets.
+
+---
+
+### Datasets
+
+#### Supported Datasets
+
+| Dataset  | Description                                                                                 | Resolution | MPP   | Task                                 |
+|----------|---------------------------------------------------------------------------------------------|------------|-------|--------------------------------------|
+| BACH     | Subtyping into normal, benign, in situ carcinoma, and invasive carcinoma                    | 20x, 10x, 5x        | 0.42  | Region/RoI-level classification     |
+| BRACS    | Subtyping of regions of interest (ROIs) extracted from WSIs                                 | 40x, 20x, 10x, 5x        | 0.25  | Whole-slide image (WSI) classification |
+| BreakHis | Histopathological dataset for breast cancer classification                                  | 40x, 20x, 10x, 5x        | 0.25  | Patch-level classification           |
+
+#### Preprocessing Details
+
+- **Resolutions Supported:**
+  - 40x, 20x, 10x, and 5x magnifications.
+- **Patch Size:**
+  - Default: 224x224 pixels.
+
+---
+
+### Methods
+
+#### Mean Pooling
+- **Pipeline:**
+  | Mean pooling of patch embeddings | → | Linear/MLP classifier |
+
+#### Attention Mechanism
+- **Pipeline:**
+  | Attention mechanism (weighted patch aggregation) | → | Linear/MLP classifier |
+
+#### Training
+- **Neural Networks (NN):**
+  - Supports attention pooling and mean pooling.
+  - Configurable number of layers and dropout rates.
+
+- **k-Nearest Neighbors (k-NN):**
+  - Cosine and Euclidean similarity metrics.
+  - Configurable values of `k`.
+
+---
+
+### Usage
+
+#### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/CS-433/ml-project-2-ml-ts-4science
+   cd CS-433-ml-project-2-ml-ts-4science
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+#### Running Scripts
+
+1. **Preprocessing:**
+   ```bash
+   python preprocessing/preprocess.py
+   ```
+
+2. **Embedding Inference:**
+   ```bash
+   python UNI/infere_uni.py --data_dir <path_to_data> --model_path <path_to_model>
+   ```
+
+3. **Analysis:**
+   ```bash
+   python analysis/tiles_analysis.py --data_dir <path_to_tiles>
+   ```
+
+4. **Training:**
+   ```bash
+   python downstream/main.py --method nn --dataset BACH --augmentation 20 --pooling GatedAttention --nlayers_classifier 2 --dropout_ratio 0.5 --epochs 100
+   ```
+
+   ```bash
+   python downstream/main.py --method knn --dataset BACH --augmentation 5 --similarity cosine
+   ```
+
+---
+
+### Notes
+
+- Ensure data directories are correctly specified in `config.yaml`.
+- Use batch scripts for efficient processing on HPC environments.
+- For custom datasets, update `ML4Science.csv` and `config.yaml` accordingly.
+
+---
+
+### Contributors
+- Carlos Hurtado Comín
+- Mario Rico Ibáñez
+- Daniel López Gala
+
+### Supervised by LTS4:
+- Sevda Öğüt
+- Cédric Vincent-Cuaz
+- Vaishnavi Subramanian
